@@ -47,8 +47,8 @@ class MySqlChecker(nagios.BaseAnalyst):
         service = request.type
         # read data from command line
         values = []
-        values[0] = int(self.parse_status_output("Bytes_received", request))
-        values[1] = int(self.parse_status_output("Bytes_sent", request))
+        values.append(int(self.parse_status_output("Bytes_received", request)))
+        values.append(int(self.parse_status_output("Bytes_sent", request)))
 
         # calculate and judge
         total = 0
@@ -72,11 +72,11 @@ class MySqlChecker(nagios.BaseAnalyst):
         service = request.type
         # read data from command line
         values = []
-        values[0] = int(self.parse_status_output("Select_full_join", request))
-        values[1] = int(self.parse_status_output("Select_full_range_join", request))
-        values[2] = int(self.parse_status_output("Select_range", request))
-        values[3] = int(self.parse_status_output("Select_range_check", request))
-        values[4] = int(self.parse_status_output("Select_scan", request))
+        values.append(int(self.parse_status_output("Select_full_join", request)))
+        values.append(int(self.parse_status_output("Select_full_range_join", request)))
+        values.append(int(self.parse_status_output("Select_range", request)))
+        values.append(int(self.parse_status_output("Select_range_check", request)))
+        values.append(int(self.parse_status_output("Select_scan", request)))
 
         # calculate and judge
         total = 0
