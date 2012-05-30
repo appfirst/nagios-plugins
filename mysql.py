@@ -23,7 +23,7 @@ class MySqlChecker(nagios.BaseAnalyst):
         if request.type == 'SELECTS':
             return self.get_select_stats(request)
         if request.type == 'TOTAL_BYTES':
-            return self.get_select_stats(request)
+            return self.get_bytes_transfer(request)
 
     def get_slow_queries(self, request):
         attr = "Slow_queries";

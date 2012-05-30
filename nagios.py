@@ -40,12 +40,14 @@ class Result(object):
 
     def __str__(self):
         output = '{0} {1}: {2}'.format(self.service, self.status, self.message)
+        if len(self.perf_data_list):
+            output += ' |'
         for pd in self.perf_data_list:
             output += self._get_perfdata_output(pd)
         return output
 
     def _get_perfdata_output(self, perfdata):
-        pdline = " | \'{0}\'={1}".format(perfdata["label"], perfdata["value"])
+        pdline = " \'{0}\'={1}".format(perfdata["label"], perfdata["value"])
         if perfdata["UOM"] is not None:
             pdline += perfdata["UOM"]
         if perfdata["warn"] is not None:
