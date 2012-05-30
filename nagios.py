@@ -36,6 +36,7 @@ class Result(object):
         perfdata = {'label':label,'value':value,'UOM' :UOM,
                     'warn' :warn, 'crit' :crit, 'minv' :minv, 'maxv' :maxv}
         self.perf_data_list.append(perfdata)
+        return self
 
     def __str__(self):
         output = '{0} {1}: {2}'.format(self.service, self.status, self.message)
