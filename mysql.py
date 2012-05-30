@@ -102,9 +102,9 @@ class MySqlChecker(nagios.BaseAnalyst):
     def parse_status_output(self, attr, request):
         #stats = {}
         cmd = "mysqladmin"
-        if hasattr(request, "user"):
+        if hasattr(request, "user") and request.user is not None:
             cmd += " --user=%s" % request.user
-        if hasattr(request, "password"):
+        if hasattr(request, "password") and request.password is not None:
             cmd += " --password=%s" % request.password
         cmd += " extended-status"
         for l in commands.getoutput(cmd).split('\n')[3:-1]:
