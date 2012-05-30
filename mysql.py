@@ -28,6 +28,7 @@ class MySqlChecker(nagios.BaseAnalyst):
         status_code = self.judge(value, request)
         r = nagios.Result(service, status_code, '%s slow queries' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        return r
 
     def get_connections(self, request):
         attr = "Connections";
@@ -36,6 +37,7 @@ class MySqlChecker(nagios.BaseAnalyst):
         status_code = self.judge(value, request)
         r = nagios.Result(service, status_code, '%s connections' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        return r
 
     def parse_status_output(self, request, attr):
         #stats = {}
