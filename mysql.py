@@ -8,7 +8,7 @@ Created on May 29, 2012
 import nagios
 import commands
 
-class MySqlChecker(nagios.BaseAnalyst):
+class MySqlChecker(nagios.BasePlugin):
     def __init__(self):
         super(MySqlChecker, self).__init__()
         self.parser.add_argument("-t", "--type", type=str, required=True);
@@ -29,7 +29,7 @@ class MySqlChecker(nagios.BaseAnalyst):
         attr = "Slow_queries";
         service = request.type
         value = int(self.parse_status_output(attr, request))
-        status_code = self.judge(value, request)
+        status_code = self.verdict(value, request)
         r = nagios.Result(service, status_code, '%s slow queries' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
@@ -38,7 +38,7 @@ class MySqlChecker(nagios.BaseAnalyst):
         attr = "Connections";
         service = request.type
         value = int(self.parse_status_output(attr, request))
-        status_code = self.judge(value, request)
+        status_code = self.verdict(value, request)
         r = nagios.Result(service, status_code, '%s connections' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
@@ -50,12 +50,12 @@ class MySqlChecker(nagios.BaseAnalyst):
         values.append(int(self.parse_status_output("Bytes_received", request)))
         values.append(int(self.parse_status_output("Bytes_sent", request)))
 
-        # calculate and judge
+        # calculate and verdict
         total = 0
         status_code = nagios.Status.OK
         for v in values:
             total += v
-            sc = self.judge(v, request)
+            sc = self.verdict(v, request)
             if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
                 status_code = nagios.Status.WARNING
             elif sc == nagios.Status.CRITICAL:
@@ -78,12 +78,12 @@ class MySqlChecker(nagios.BaseAnalyst):
         values.append(int(self.parse_status_output("Select_range_check", request)))
         values.append(int(self.parse_status_output("Select_scan", request)))
 
-        # calculate and judge
+        # calculate and verdict
         total = 0
         status_code = nagios.Status.OK
         for v in values:
             total += v
-            sc = self.judge(v, request)
+            sc = self.verdict(v, request)
             if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
                 status_code = nagios.Status.WARNING
             elif sc == nagios.Status.CRITICAL:

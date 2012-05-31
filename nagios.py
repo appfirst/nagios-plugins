@@ -30,6 +30,10 @@ class Result(object):
         self.status = Status.to_status(status_code)
         self.message = message
         self.perf_data_list = []
+        self.exit_code = self.get_exit_code(status_code)
+
+    def get_exit_code(self, status_code):
+        return 0
 
     def add_performance_data(self, label, value, UOM=None,
                              warn=None, crit=None, minv=None, maxv=None):
@@ -47,7 +51,7 @@ class Result(object):
         return output
 
     def _get_perfdata_output(self, perfdata):
-        pdline = " \'{0}\'={1}".format(perfdata["label"], perfdata["value"])
+        pdline = " {0}={1}".format(perfdata["label"], perfdata["value"])
         if perfdata["UOM"] is not None:
             pdline += perfdata["UOM"]
         if perfdata["warn"] is not None:
@@ -60,7 +64,7 @@ class Result(object):
             pdline += ';%s' % perfdata["maxv"]
         return pdline
 
-class BaseAnalyst(object):
+class BasePlugin(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         self._default_argument()
@@ -76,32 +80,19 @@ class BaseAnalyst(object):
         self.request = self.parser.parse_args(sys.argv[1:])
         result = self.check(self.request)
         print result
-        sys.exit(self.exit_code)
+        sys.exit(result.exit_code)
 
     def check(self, request):
-        service = 'service'
-        value = 2
-        status_code = self.judge(value, request)
-        r = Result(service, status_code, 'services %s instances' % value);
-        label = 'label'
-        UOM = 'c'
-        minv = 0
-        maxv = 10
-        r.add_performance_data(label, value, UOM, request.warn, request.crit, minv, maxv)
-        return r
+        raise NotImplementedError('need to override BasePlugin.check in subclass')
 
-    def judge(self, value, request):
+    def verdict(self, value, request):
         status_code = Status.UNKNOWN
-        if hasattr(request, 'warn') and request.warn is not None and value < request.warn:
+        if request.warn is not None and value < request.warn:
             status_code = Status.OK
-        elif hasattr(request, 'crit') and request.crit is not None and value >= request.crit:
+        elif request.crit is not None and value >= request.crit:
             status_code = Status.CRITICAL
-        elif (hasattr(request, 'warn') and request.warn is not None):
+        elif request.warn is not None:
             status_code = Status.WARNING
         else:
             status_code = Status.OK
         return status_code
-
-    @property
-    def exit_code(self):
-        return 0
