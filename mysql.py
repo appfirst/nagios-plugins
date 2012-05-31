@@ -7,6 +7,8 @@ Created on May 29, 2012
 
 import nagios
 import commands
+import os
+import pickle
 
 class MySqlChecker(nagios.BasePlugin):
     def __init__(self):
@@ -14,46 +16,171 @@ class MySqlChecker(nagios.BasePlugin):
         self.parser.add_argument("-t", "--type", type=str, required=True);
         self.parser.add_argument("-u", "--user", type=str, required=False);
         self.parser.add_argument("-p", "--password", type=str, required=False);
+        self.rootdir = '/tmp/'
+        self.filename = 'mysql-extended-status'
 
     def check(self, request):
+        self.stats = self.parse_status_output(request)
+        if len(self.stats) == 0:
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "failed to check mysql. csheck arguments and try again.");
+        self.laststats = self.retreive_last_status()
+        if request.type == 'QUERIES_PER_SECOND':
+            r = self.get_queries_per_second(request)
         if request.type == 'SLOW_QUERIES':
-            return self.get_slow_queries(request)
+            r = self.get_slow_queries(request)
+        if request.type == 'ROW_OPERATIONS':
+            r = self.get_row_opertions(request)
+        if request.type == 'TRANSACTIONS':
+            r = self.get_transactions(request)
+        if request.type == 'NETWORK_TRAFFIC':
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "mysterious status");
         if request.type == 'CONNECTIONS':
-            return self.get_connections(request)
+            r = self.get_connections(request)
         if request.type == 'SELECTS':
-            return self.get_select_stats(request)
+            r = self.get_select_stats(request)
         if request.type == 'TOTAL_BYTES':
-            return self.get_bytes_transfer(request)
+            r = self.get_bytes_transfer(request)
+        if request.type == 'REPLICATION':
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "mysterious status");
+        self.save_status()
+        return r
 
-    def get_slow_queries(self, request):
-        attr = "Slow_queries";
-        service = request.type
-        value = int(self.parse_status_output(attr, request))
+    def retreive_last_status(self):
+        laststats = {}
+        try:
+            fn = os.path.join(self.rootdir, self.filename)
+            if os.path.exists(fn):
+                laststats = pickle.load(open(fn))
+        except pickle.PickleError:
+            pass
+        except EOFError:
+            pass
+        return laststats
+
+    def save_status(self):
+        try:
+            fn = os.path.join(self.rootdir, self.filename)
+            pickle.dump(self.laststats, open(fn, "w"))
+        except pickle.PickleError:
+            pass
+        except EOFError:
+            pass
+
+    def parse_status_output(self, request):
+        stats = {}
+        cmd = "mysqladmin"
+        if hasattr(request, "user") and request.user is not None:
+            cmd += " --user=%s" % request.user
+        if hasattr(request, "password") and request.password is not None:
+            cmd += " --password=%s" % request.password
+        cmd += " extended-status"
+        for l in commands.getoutput(cmd).split('\n')[3:-1]:
+            fields = l.split('|')[1:3]
+            k = fields[0].strip()
+            v = fields[1].strip()
+            stats.setdefault(k, v)
+            try:
+                stats[k] = int(v)
+            except ValueError:
+                try:
+                    stats[k] = float(v)
+                except ValueError:
+                    pass
+        return stats
+
+    def get_delta_value(self, attr):
+        if attr in self.laststats:
+            delta = self.stats[attr] - self.laststats[attr]
+        else:
+            delta = self.stats[attr]
+        self.laststats[attr] = self.stats[attr]
+        return delta
+
+    def get_queries_per_second(self, request):
+        queries = self.get_delta_value("Queries")
+        ms = self.get_delta_value("Uptime") / 1000.0
+        value = int(queries / ms)
         status_code = self.verdict(value, request)
-        r = nagios.Result(service, status_code, '%s slow queries' % value);
+        r = nagios.Result(request.type, status_code, '%s queries per second' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
 
-    def get_connections(self, request):
-        attr = "Connections";
-        service = request.type
-        value = int(self.parse_status_output(attr, request))
+    def get_slow_queries(self, request):
+        value = self.get_delta_value("Slow_queries")
         status_code = self.verdict(value, request)
-        r = nagios.Result(service, status_code, '%s connections' % value);
+        r = nagios.Result(request.type, status_code, '%s slow queries' % value);
+        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        return r
+
+    def get_row_opertions(self, request):
+        # read data from command line, calculate and verdict
+        attrs = ["Innodb_rows_deleted","Innodb_rows_inserted",
+                 "Innodb_rows_updated","Innodb_rows_read"]
+        values = []
+        total = 0
+        status_code = nagios.Status.OK
+        for attr in attrs:
+            v = self.get_delta_value(attr)
+            values.append(v)
+            total += v
+            sc = self.verdict(v, request)
+            if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
+                status_code = nagios.Status.WARNING
+            elif sc == nagios.Status.CRITICAL:
+                status_code = nagios.Status.CRITICAL
+
+        # build result
+        r = nagios.Result(request.type, status_code, '%s row operations' % total);
+        r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
+        r.add_performance_data('rows_deleted', values[0], warn=request.warn, crit=request.crit)
+        r.add_performance_data('rows_inserted',values[1], warn=request.warn, crit=request.crit)
+        r.add_performance_data('rows_updated', values[2], warn=request.warn, crit=request.crit)
+        r.add_performance_data('rows_read',    values[3], warn=request.warn, crit=request.crit)
+        return r
+
+    def get_transactions(self, request):
+        # read data from command line, calculate and verdict
+        attrs = ["Handler_commit","Handler_rollback"]
+        values = []
+        total = 0
+        status_code = nagios.Status.OK
+        for attr in attrs:
+            v = self.get_delta_value(attr)
+            values.append(v)
+            total += v
+            sc = self.verdict(v, request)
+            if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
+                status_code = nagios.Status.WARNING
+            elif sc == nagios.Status.CRITICAL:
+                status_code = nagios.Status.CRITICAL
+
+        # build result
+        r = nagios.Result(request.type, status_code, '%s transactions' % total);
+        r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
+        r.add_performance_data('commit', values[0], warn=request.warn, crit=request.crit)
+        r.add_performance_data('rollback',values[1], warn=request.warn, crit=request.crit)
+        return r
+
+    def get_connections(self, request):
+        value = self.get_delta_value("Connections")
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, '%s connections' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
 
     def get_bytes_transfer(self, request):
         service = request.type
-        # read data from command line
+        # read data from command line, calculate and verdict
+        attrs = ["Bytes_received", "Bytes_sent"]
         values = []
-        values.append(int(self.parse_status_output("Bytes_received", request)))
-        values.append(int(self.parse_status_output("Bytes_sent", request)))
-
-        # calculate and verdict
         total = 0
         status_code = nagios.Status.OK
-        for v in values:
+        for attr in attrs:
+            v = self.get_delta_value(attr)
+            values.append(v)
             total += v
             sc = self.verdict(v, request)
             if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
@@ -69,19 +196,15 @@ class MySqlChecker(nagios.BasePlugin):
         return r
 
     def get_select_stats(self, request):
-        service = request.type
-        # read data from command line
+        # read data from command line, calculate and verdict
+        attrs = ["Select_full_join",  "Select_full_range_join","Select_range",
+                 "Select_range_check","Select_scan"]
         values = []
-        values.append(int(self.parse_status_output("Select_full_join", request)))
-        values.append(int(self.parse_status_output("Select_full_range_join", request)))
-        values.append(int(self.parse_status_output("Select_range", request)))
-        values.append(int(self.parse_status_output("Select_range_check", request)))
-        values.append(int(self.parse_status_output("Select_scan", request)))
-
-        # calculate and verdict
         total = 0
         status_code = nagios.Status.OK
-        for v in values:
+        for attr in attrs:
+            v = self.get_delta_value(attr)
+            values.append(v)
             total += v
             sc = self.verdict(v, request)
             if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
@@ -90,7 +213,7 @@ class MySqlChecker(nagios.BasePlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(service, status_code, '%s select' % total);
+        r = nagios.Result(request.type, status_code, '%s select' % total);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('select_full_join', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('select_full_range_join', values[1], warn=request.warn, crit=request.crit)
@@ -98,29 +221,6 @@ class MySqlChecker(nagios.BasePlugin):
         r.add_performance_data('select_range_check', values[3], warn=request.warn, crit=request.crit)
         r.add_performance_data('select_scan', values[4], warn=request.warn, crit=request.crit)
         return r
-
-    def parse_status_output(self, attr, request):
-        #stats = {}
-        cmd = "mysqladmin"
-        if hasattr(request, "user") and request.user is not None:
-            cmd += " --user=%s" % request.user
-        if hasattr(request, "password") and request.password is not None:
-            cmd += " --password=%s" % request.password
-        cmd += " extended-status"
-        for l in commands.getoutput(cmd).split('\n')[3:-1]:
-            fields = l.split('|')[1:3]
-            k = fields[0].strip()
-            v = fields[1].strip()
-            if attr == k:
-                return v
-#            stats.setdefault(k, v)
-#            try:
-#                stats[k] = int(v)
-#            except ValueError:
-#                try:
-#                    stats[k] = float(v)
-#                except ValueError:
-#                    pass
 
 if __name__ == "__main__":
     MySqlChecker().run()
