@@ -33,7 +33,7 @@ class Result(object):
         self.exit_code = self.get_exit_code(status_code)
 
     def get_exit_code(self, status_code):
-        return 0
+        return status_code
 
     def add_performance_data(self, label, value, UOM=None,
                              warn=None, crit=None, minv=None, maxv=None):
@@ -79,13 +79,18 @@ class BasePlugin(object):
     def run(self):
         self.request = self.parser.parse_args(sys.argv[1:])
         result = self.check(self.request)
-        print result
-        sys.exit(result.exit_code)
+        if result is not None:
+            print result
+            sys.exit(result.exit_code)
 
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
     def verdict(self, value, request):
+        # default verdict function
+        # ok   if value < warn            crit
+        # warn if         warn <= value < crit
+        # crit if         warn            crit <= value
         status_code = Status.UNKNOWN
         if request.warn is not None and value < request.warn:
             status_code = Status.OK
