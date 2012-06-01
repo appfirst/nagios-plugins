@@ -11,7 +11,16 @@ import commands
 class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(MySqlChecker, self).__init__()
-        self.parser.add_argument("-t", "--type", type=str, required=True);
+        choices = ["QUERIES_PER_SECOND",
+                   "SLOW_QUERIES",
+                   "ROW_OPERATIONS",
+                   "TRANSACTIONS",
+                   "NETWORK_TRAFFIC",
+                   "CONNECTIONS",
+                   "SELECTS",
+                   "TOTAL_BYTES",
+                   "REPLICATION"]
+        self.parser.add_argument("-t", "--type", choices=choices, required=True);
         self.parser.add_argument("-u", "--user", type=str, required=False);
         self.parser.add_argument("-p", "--password", type=str, required=False);
 
@@ -19,7 +28,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         self.stats = self.parse_status_output(request)
         if len(self.stats) == 0:
             return nagios.Result(request.type, nagios.Status.UNKNOWN,
-                                 "failed to check mysql. check arguments and try again.");
+                                 "failed to check mysql. check arguments and try again.")
         if request.type == 'QUERIES_PER_SECOND':
             r = self.get_queries_per_second(request)
         if request.type == 'SLOW_QUERIES':
@@ -29,8 +38,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         if request.type == 'TRANSACTIONS':
             r = self.get_transactions(request)
         if request.type == 'NETWORK_TRAFFIC':
-            return nagios.Result(request.type, nagios.Status.UNKNOWN,
-                                 "mysterious status");
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,"mysterious status")
         if request.type == 'CONNECTIONS':
             r = self.get_connections(request)
         if request.type == 'SELECTS':
@@ -38,8 +46,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         if request.type == 'TOTAL_BYTES':
             r = self.get_bytes_transfer(request)
         if request.type == 'REPLICATION':
-            return nagios.Result(request.type, nagios.Status.UNKNOWN,
-                                 "mysterious status");
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,"mysterious status")
         return r
 
     def parse_status_output(self, request):
@@ -66,8 +73,8 @@ class MySqlChecker(nagios.BatchStatusPlugin):
 
     def get_queries_per_second(self, request):
         queries = self.get_delta_value("Queries")
-        ms = self.get_delta_value("Uptime") / 1000.0
-        value = int(queries / ms)
+        sec = self.get_delta_value("Uptime")
+        value = queries / sec
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s queries per second' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
