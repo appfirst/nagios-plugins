@@ -74,7 +74,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     def get_queries_per_second(self, request):
         queries = self.get_delta_value("Queries")
         sec = self.get_delta_value("Uptime")
-        value = queries / sec
+        value = float(queries) / sec
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s queries per second' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
@@ -151,7 +151,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(attr)
+            v = float(self.get_delta_value(attr)) / 1024 /1024
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -162,9 +162,9 @@ class MySqlChecker(nagios.BatchStatusPlugin):
 
         # build result
         r = nagios.Result(service, status_code, '%s total bytes' % total);
-        r.add_performance_data('total', total, 'B', warn=request.warn, crit=request.crit)
-        r.add_performance_data('bytes_received', values[0], 'B', warn=request.warn, crit=request.crit)
-        r.add_performance_data('bytes_sent', values[1], 'B', warn=request.warn, crit=request.crit)
+        r.add_performance_data('total', total, 'MB', warn=request.warn, crit=request.crit)
+        r.add_performance_data('bytes_received', values[0], 'MB', warn=request.warn, crit=request.crit)
+        r.add_performance_data('bytes_sent', values[1], 'MB', warn=request.warn, crit=request.crit)
         return r
 
     def get_select_stats(self, request):
