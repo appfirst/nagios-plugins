@@ -7,24 +7,19 @@ Created on May 29, 2012
 
 import nagios
 import commands
-import os
-import pickle
 
-class MySqlChecker(nagios.BasePlugin):
+class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(MySqlChecker, self).__init__()
         self.parser.add_argument("-t", "--type", type=str, required=True);
         self.parser.add_argument("-u", "--user", type=str, required=False);
         self.parser.add_argument("-p", "--password", type=str, required=False);
-        self.rootdir = '/tmp/'
-        self.filename = 'mysql-extended-status'
 
     def check(self, request):
         self.stats = self.parse_status_output(request)
         if len(self.stats) == 0:
             return nagios.Result(request.type, nagios.Status.UNKNOWN,
-                                 "failed to check mysql. csheck arguments and try again.");
-        self.laststats = self.retreive_last_status()
+                                 "failed to check mysql. check arguments and try again.");
         if request.type == 'QUERIES_PER_SECOND':
             r = self.get_queries_per_second(request)
         if request.type == 'SLOW_QUERIES':
@@ -45,29 +40,7 @@ class MySqlChecker(nagios.BasePlugin):
         if request.type == 'REPLICATION':
             return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status");
-        self.save_status()
         return r
-
-    def retreive_last_status(self):
-        laststats = {}
-        try:
-            fn = os.path.join(self.rootdir, self.filename)
-            if os.path.exists(fn):
-                laststats = pickle.load(open(fn))
-        except pickle.PickleError:
-            pass
-        except EOFError:
-            pass
-        return laststats
-
-    def save_status(self):
-        try:
-            fn = os.path.join(self.rootdir, self.filename)
-            pickle.dump(self.laststats, open(fn, "w"))
-        except pickle.PickleError:
-            pass
-        except EOFError:
-            pass
 
     def parse_status_output(self, request):
         stats = {}
@@ -90,14 +63,6 @@ class MySqlChecker(nagios.BasePlugin):
                 except ValueError:
                     pass
         return stats
-
-    def get_delta_value(self, attr):
-        if attr in self.laststats:
-            delta = self.stats[attr] - self.laststats[attr]
-        else:
-            delta = self.stats[attr]
-        self.laststats[attr] = self.stats[attr]
-        return delta
 
     def get_queries_per_second(self, request):
         queries = self.get_delta_value("Queries")
@@ -167,7 +132,7 @@ class MySqlChecker(nagios.BasePlugin):
     def get_connections(self, request):
         value = self.get_delta_value("Connections")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s connections' % value);
+        r = nagios.Result(request.type, status_code, '%s new connections' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
 

@@ -5,6 +5,7 @@ Created on May 29, 2012
 @copyright: appfirst inc.
 '''
 import argparse, sys
+import os, pickle
 
 class Status(object):
     OK = 0
@@ -78,13 +79,21 @@ class BasePlugin(object):
 
     def run(self):
         self.request = self.parser.parse_args(sys.argv[1:])
+        self.pre_check(self.request)
         result = self.check(self.request)
+        self.post_check(self.request)
         if result is not None:
             print result
             sys.exit(result.exit_code)
 
+    def pre_check(self, request):
+        pass
+
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
+
+    def post_check(self, request):
+        pass
 
     def verdict(self, value, request):
         # default verdict function
@@ -101,3 +110,45 @@ class BasePlugin(object):
         else:
             status_code = Status.OK
         return status_code
+
+class BatchStatusPlugin(BasePlugin):
+    def __init__(self):
+        super(BatchStatusPlugin, self).__init__()
+        self.parser.add_argument("-d", "--rootdir", default='/tmp/', type=str, required=False);
+        self.parser.add_argument("-f", "--filename", default='mysql-extended-status', type=str, required=False);
+
+    def pre_check(self, request):
+        self.stats = {}
+        self.laststats = self.retreive_last_status(request)
+
+    def post_check(self, request):
+        self.save_status(request)
+
+    def retreive_last_status(self, request):
+        laststats = {}
+        try:
+            fn = os.path.join(request.rootdir, request.filename)
+            if os.path.exists(fn):
+                laststats = pickle.load(open(fn))
+        except pickle.PickleError:
+            pass
+        except EOFError:
+            pass
+        return laststats
+
+    def save_status(self, request):
+        try:
+            fn = os.path.join(request.rootdir, request.filename)
+            pickle.dump(self.laststats, open(fn, "w"))
+        except pickle.PickleError:
+            pass
+        except EOFError:
+            pass
+
+    def get_delta_value(self, attr):
+        if attr in self.laststats:
+            delta = self.stats[attr] - self.laststats[attr]
+        else:
+            delta = self.stats[attr]
+        self.laststats[attr] = self.stats[attr]
+        return delta
