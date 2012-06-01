@@ -10,6 +10,7 @@ import commands
 class RedisChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(RedisChecker, self).__init__()
+        self.parser.add_argument("-f", "--filename", default='redis-cli-info', type=str, required=False);
         choices = ["CUR_OPERATIONS_RATE",
                    "AVG_OPERATIONS_RATE",
                    "MEMORY_USED",

@@ -115,7 +115,6 @@ class BatchStatusPlugin(BasePlugin):
     def __init__(self):
         super(BatchStatusPlugin, self).__init__()
         self.parser.add_argument("-d", "--rootdir", default='/tmp/', type=str, required=False);
-        self.parser.add_argument("-f", "--filename", default='mysql-extended-status', type=str, required=False);
 
     def pre_check(self, request):
         self.stats = {}

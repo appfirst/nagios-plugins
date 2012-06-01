@@ -11,6 +11,7 @@ import commands
 class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(MySqlChecker, self).__init__()
+        self.parser.add_argument("-f", "--filename", default='mysql-extended-status', type=str, required=False);
         choices = ["QUERIES_PER_SECOND",
                    "SLOW_QUERIES",
                    "ROW_OPERATIONS",
@@ -161,7 +162,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(service, status_code, '%s total bytes' % total);
+        r = nagios.Result(service, status_code, '%sMB in total' % total);
         r.add_performance_data('total', total, 'MB', warn=request.warn, crit=request.crit)
         r.add_performance_data('bytes_received', values[0], 'MB', warn=request.warn, crit=request.crit)
         r.add_performance_data('bytes_sent', values[1], 'MB', warn=request.warn, crit=request.crit)
