@@ -11,8 +11,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(RedisChecker, self).__init__()
         self.parser.add_argument("-f", "--filename", default='redis-cli-info', type=str, required=False);
-        choices = ["CUR_OPERATIONS_RATE",
-                   "AVG_OPERATIONS_RATE",
+        choices = ["OPERATIONS_RATE",
                    "MEMORY_USED",
                    "CHANGES_SINCE_LAST_SAVE",
                    "READ_WRITE_RATIO",
@@ -27,12 +26,10 @@ class RedisChecker(nagios.BatchStatusPlugin):
             return self.get_total_keys(request)
         self.stats = self.parse_status_output(request)
         if len(self.stats) == 0:
-            return nagios.Result(request.type,nagios.Status.UNKNOWN,
-                                 "failed to check redis. check arguments and try again.")
-        if request.type == 'CUR_OPERATIONS_RATE':
-            return self.get_current_operations_rate(request)
-        if request.type == 'AVG_OPERATIONS_RATE':
-            return self.get_average_operations_rate(request)
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                 "cannot connect to redis.")
+        if request.type == 'OPERATIONS_RATE':
+            return self.get_operations_rate(request)
         if request.type == 'MEMORY_USED':
             return self.get_memory_used(request)
         if request.type == 'CHANGES_SINCE_LAST_SAVE':
@@ -40,7 +37,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         if request.type == 'READ_WRITE_RATIO':
             return nagios.Result(request.type,nagios.Status.UNKNOWN,"mysterious status")
         if request.type == 'COMMAND_FREQUENCY':
-            return self.get_command_frequency(request)
+            return nagios.Result(request.type,nagios.Status.UNKNOWN,"mysterious status")
 
     def parse_status_output(self, request):
         stats = {}
@@ -60,22 +57,20 @@ class RedisChecker(nagios.BatchStatusPlugin):
                     pass
         return stats
 
-    def get_current_operations_rate(self, request):
+    def get_operations_rate(self, request):
+        # current
         queries = self.get_delta_value("total_commands_processed")
         sec = self.get_delta_value("uptime_in_seconds")
         value = queries / sec
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s commands per second' % value);
-        r.add_performance_data('frequency', value, warn=request.warn, crit=request.crit)
-        return r
+        r.add_performance_data('current_rate', value, warn=request.warn, crit=request.crit)
 
-    def get_average_operations_rate(self, request):
+        # average
         queries = self.stats["total_commands_processed"]
         sec = self.stats["uptime_in_seconds"]
         value = queries / sec
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s commands per second' % value);
-        r.add_performance_data('frequency', value, warn=request.warn, crit=request.crit)
+        r.add_performance_data('average_rate', value, warn=request.warn, crit=request.crit)
         return r
 
     def get_memory_used(self, request):
@@ -104,15 +99,6 @@ class RedisChecker(nagios.BatchStatusPlugin):
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s total keys' % value);
         r.add_performance_data('total_keys', value, warn=request.warn, crit=request.crit)
-        return r
-
-    def get_command_frequency(self, request):
-        queries = self.get_delta_value("total_commands_processed")
-        sec = self.get_delta_value("uptime_in_seconds")
-        value = queries / sec
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s commands per second' % value);
-        r.add_performance_data('frequency', value, warn=request.warn, crit=request.crit)
         return r
 
 if __name__ == "__main__":

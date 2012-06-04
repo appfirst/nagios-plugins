@@ -28,8 +28,8 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     def check(self, request):
         self.stats = self.parse_status_output(request)
         if len(self.stats) == 0:
-            return nagios.Result(request.type, nagios.Status.UNKNOWN,
-                                 "failed to check mysql. check arguments and try again.")
+            return nagios.Result(request.type, nagios.Status.CRITICAL,
+                                 "cannot connect to mysql.")
         if request.type == 'QUERIES_PER_SECOND':
             r = self.get_queries_per_second(request)
         if request.type == 'SLOW_QUERIES':
