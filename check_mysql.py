@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Created on May 29, 2012
 
@@ -11,44 +12,31 @@ import commands
 class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(MySqlChecker, self).__init__()
-        self.parser.add_argument("-f", "--filename", default='mysql-extended-status', type=str, required=False);
-        choices = ["QUERIES_PER_SECOND",
-                   "SLOW_QUERIES",
-                   "ROW_OPERATIONS",
-                   "TRANSACTIONS",
-                   "NETWORK_TRAFFIC",
-                   "CONNECTIONS",
-                   "SELECTS",
-                   "TOTAL_BYTES",
-                   "REPLICATION"]
-        self.parser.add_argument("-t", "--type", choices=choices, required=True);
-        self.parser.add_argument("-u", "--user", type=str, required=False);
-        self.parser.add_argument("-p", "--password", type=str, required=False);
+        self.choicemap = {"QUERIES_PER_SECOND":self.get_queries_per_second,
+                          "SLOW_QUERIES"      :self.get_slow_queries,
+                          "ROW_OPERATIONS"    :self.get_row_opertions,
+                          "TRANSACTIONS"      :self.get_transactions,
+                          "NETWORK_TRAFFIC"   :None,
+                          "CONNECTIONS"       :self.get_connections,
+                          "SELECTS"           :self.get_select_stats,
+                          "TOTAL_BYTES"       :self.get_bytes_transfer,
+                          "REPLICATION"       :None}
+        self.parser.add_argument("-f", "--filename", default='mysqladmin_extended-status', type=str, required=False);
+        self.parser.add_argument("-t", "--type", required=True, choices=self.choicemap.keys());
+        self.parser.add_argument("-u", "--user", required=False, type=str);
+        self.parser.add_argument("-p", "--password", required=False, type=str);
 
     def check(self, request):
         self.stats = self.parse_status_output(request)
         if len(self.stats) == 0:
             return nagios.Result(request.type, nagios.Status.CRITICAL,
                                  "cannot connect to mysql.")
-        if request.type == 'QUERIES_PER_SECOND':
-            r = self.get_queries_per_second(request)
-        if request.type == 'SLOW_QUERIES':
-            r = self.get_slow_queries(request)
-        if request.type == 'ROW_OPERATIONS':
-            r = self.get_row_opertions(request)
-        if request.type == 'TRANSACTIONS':
-            r = self.get_transactions(request)
-        if request.type == 'NETWORK_TRAFFIC':
-            return nagios.Result(request.type, nagios.Status.UNKNOWN,"mysterious status")
-        if request.type == 'CONNECTIONS':
-            r = self.get_connections(request)
-        if request.type == 'SELECTS':
-            r = self.get_select_stats(request)
-        if request.type == 'TOTAL_BYTES':
-            r = self.get_bytes_transfer(request)
-        if request.type == 'REPLICATION':
-            return nagios.Result(request.type, nagios.Status.UNKNOWN,"mysterious status")
-        return r
+
+        if request.type in self.choicemap and self.choicemap[request.type]:
+            return self.choicemap[request.type](request)
+        else:
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "mysterious status")
 
     def parse_status_output(self, request):
         stats = {}

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Created on May 31, 2012
 
@@ -10,16 +11,14 @@ import commands
 class RedisChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(RedisChecker, self).__init__()
-        self.parser.add_argument("-f", "--filename", default='redis-cli-info', type=str, required=False);
-        choices = ["OPERATIONS_RATE",
-                   "MEMORY_USED",
-                   "CHANGES_SINCE_LAST_SAVE",
-                   "READ_WRITE_RATIO",
-                   "TOTAL_KEYS",
-                   "COMMAND_FREQUENCY"]
-        self.parser.add_argument("-t", "--type", choices=choices, required=True);
-        self.parser.add_argument("-u", "--user", type=str, required=False);
-        self.parser.add_argument("-p", "--password", type=str, required=False);
+        self.choicemap = {"OPERATIONS_RATE"        :self.get_operations_rate,
+                          "MEMORY_USED"            :self.get_memory_used,
+                          "CHANGES_SINCE_LAST_SAVE":self.get_changes_since_last_save,
+                          "READ_WRITE_RATIO"       :None,
+                          "TOTAL_KEYS"             :self.get_total_keys,
+                          "COMMAND_FREQUENCY"      :None}
+        self.parser.add_argument("-f", "--filename", default='redis-cli_info', type=str, required=False);
+        self.parser.add_argument("-t", "--type", required=True, choices=self.choicemap.keys());
 
     def check(self, request):
         if request.type == 'TOTAL_KEYS':
@@ -28,16 +27,11 @@ class RedisChecker(nagios.BatchStatusPlugin):
         if len(self.stats) == 0:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                  "cannot connect to redis.")
-        if request.type == 'OPERATIONS_RATE':
-            return self.get_operations_rate(request)
-        if request.type == 'MEMORY_USED':
-            return self.get_memory_used(request)
-        if request.type == 'CHANGES_SINCE_LAST_SAVE':
-            return self.get_changes_since_last_save(request)
-        if request.type == 'READ_WRITE_RATIO':
-            return nagios.Result(request.type,nagios.Status.UNKNOWN,"mysterious status")
-        if request.type == 'COMMAND_FREQUENCY':
-            return nagios.Result(request.type,nagios.Status.UNKNOWN,"mysterious status")
+        if request.type in self.choicemap and self.choicemap[request.type]:
+            return self.choicemap[request.type](request)
+        else:
+            return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "mysterious status")
 
     def parse_status_output(self, request):
         stats = {}
