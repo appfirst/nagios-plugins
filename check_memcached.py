@@ -3,10 +3,10 @@
 Created on Jun 11, 2012
 
 @author: yangming
-@copyright: appfirst inc.
 '''
 import nagios
 import commands
+import statsd
 
 class MemcachedChecker(nagios.BatchStatusPlugin):
     def __init__(self):
@@ -38,6 +38,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
                     pass
         return stats
 
+    @statsd.counter("sys.app.memcached.cmd_set_requests")
     @nagios.BatchStatusPlugin.command("OPERATIONS_SET_REQUESTS", "cumulative")
     def get_cmd_set(self, request):
         # since last time
@@ -55,6 +56,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('set_requests_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @statsd.counter("sys.app.memcached.cmd_get_requests")
     @nagios.BatchStatusPlugin.command("OPERATIONS_GET_REQUESTS", "cumulative")
     def get_cmd_get(self, request):
         # since last time
@@ -72,6 +74,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('get_requests_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @statsd.counter("sys.app.memcached.bytes_read")
     @nagios.BatchStatusPlugin.command("BYTES_READ", "cumulative")
     def get_bytes_read(self, request):
         # since last time
@@ -89,6 +92,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_read_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @statsd.counter("sys.app.memcached.bytes_written")
     @nagios.BatchStatusPlugin.command("BYTES_WRITTEN", "cumulative")
     def get_bytes_written(self, request):
         # since last time
@@ -106,6 +110,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_written_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @statsd.counter("sys.app.memcached.bytes_allocated")
     @nagios.BatchStatusPlugin.command("BYTES_ALLOCATED", "cumulative")
     def get_bytes_allocated(self, request):
         # since last time
@@ -123,6 +128,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_allocated_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @statsd.gauge("sys.app.memcached.bytes_allocated")
     @nagios.BatchStatusPlugin.command("TOTAL_ITEMS", "status")
     def get_total_items(self, request):
         # since last time
@@ -132,6 +138,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('items', value, warn=request.warn, crit=request.crit)
         return r
 
+    @statsd.gauge("sys.app.memcached.bytes_allocated")
     @nagios.BatchStatusPlugin.command("TOTAL_CONNECTIONS", "status")
     def get_total_connections(self, request):
         # since last time
@@ -140,7 +147,6 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, '%s total connections' % value);
         r.add_performance_data('connections', value, warn=request.warn, crit=request.crit)
         return r
-
 
 if __name__ == "__main__":
     MemcachedChecker().run()
