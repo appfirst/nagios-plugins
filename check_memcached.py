@@ -17,7 +17,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
 
     def parse_status_output(self, request):
         stats = {}
-        cmd = "echo stats | nc"
+        cmd = "echo 'stats' | nc"
         cmd += " %s %s" % (request.host, request.port)
         output = commands.getoutput(cmd)
         if "STAT" not in output or "END" not in output:
