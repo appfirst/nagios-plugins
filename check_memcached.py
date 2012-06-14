@@ -1,38 +1,19 @@
 #!/usr/bin/python
 '''
-Created on May 31, 2012
+Created on Jun 11, 2012
 
-@author: appfirst
+@author: yangming
+@copyright: appfirst inc.
 '''
-import re
 import nagios
 import commands
 
 class MemcachedChecker(nagios.BatchStatusPlugin):
     def __init__(self):
         super(MemcachedChecker, self).__init__()
-        self.choicemap = {"OPERATIONS_SET_REQUESTS":self.get_cmd_set,
-                          "OPERATIONS_GET_REQUESTS":self.get_cmd_get,
-                          "BYTES_READ"             :self.get_bytes_read,
-                          "BYTES_WRITTEN"          :self.get_bytes_written,
-                          "BYTES_ALLOCATED"        :self.get_bytes_allocated,
-                          "TOTAL_ITEMS"            :self.get_total_items,
-                          "TOTAL_CONNECTIONS"      :self.get_total_connections}
         self.parser.add_argument("-f", "--filename", default='memcached_stats', type=str, required=False);
-        self.parser.add_argument("-t", "--type", required=True, choices=self.choicemap.keys());
         self.parser.add_argument("-H", "--host", required=False, type=str, default="localhost");
         self.parser.add_argument("-p", "--port", required=False, type=str, default="11211");
-
-    def check(self, request):
-        self.stats = self.parse_status_output(request)
-        if len(self.stats) == 0:
-            return nagios.Result(request.type, nagios.Status.CRITICAL,
-                                 "cannot connect to redis.")
-        if request.type in self.choicemap and self.choicemap[request.type]:
-            return self.choicemap[request.type](request)
-        else:
-            return nagios.Result(request.type, nagios.Status.UNKNOWN,
-                                 "mysterious status")
 
     def parse_status_output(self, request):
         stats = {}
@@ -57,6 +38,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
                     pass
         return stats
 
+    @nagios.BatchStatusPlugin.command("OPERATIONS_SET_REQUESTS", "cumulative")
     def get_cmd_set(self, request):
         # since last time
         queries = self.get_delta_value("cmd_set")
@@ -67,10 +49,13 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('set_requests', value, warn=request.warn, crit=request.crit)
 
         # rate
+        if sec == 0:
+            sec = 1
         value = queries / sec
         r.add_performance_data('set_requests_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @nagios.BatchStatusPlugin.command("OPERATIONS_GET_REQUESTS", "cumulative")
     def get_cmd_get(self, request):
         # since last time
         queries = self.get_delta_value("cmd_get")
@@ -81,10 +66,13 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('get_requests', value, warn=request.warn, crit=request.crit)
 
         # rate
+        if sec == 0:
+            sec = 1
         value = queries / sec
         r.add_performance_data('get_requests_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @nagios.BatchStatusPlugin.command("BYTES_READ", "cumulative")
     def get_bytes_read(self, request):
         # since last time
         total_bytes = self.get_delta_value("bytes_read")
@@ -95,10 +83,13 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_read', value, warn=request.warn, crit=request.crit)
 
         # rate
+        if sec == 0:
+            sec = 1
         value = total_bytes / sec
         r.add_performance_data('bytes_read_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @nagios.BatchStatusPlugin.command("BYTES_WRITTEN", "cumulative")
     def get_bytes_written(self, request):
         # since last time
         total_bytes = self.get_delta_value("bytes_written")
@@ -109,10 +100,13 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_written', value, warn=request.warn, crit=request.crit)
 
         # rate
+        if sec == 0:
+            sec = 1
         value = total_bytes / sec
         r.add_performance_data('bytes_written_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @nagios.BatchStatusPlugin.command("BYTES_ALLOCATED", "cumulative")
     def get_bytes_allocated(self, request):
         # since last time
         total_bytes = self.get_delta_value("bytes")
@@ -123,23 +117,29 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_allocated', value, warn=request.warn, crit=request.crit)
 
         # rate
+        if sec == 0:
+            sec = 1
         value = total_bytes / sec
         r.add_performance_data('bytes_allocated_rate', value, warn=request.warn, crit=request.crit)
         return r
 
+    @nagios.BatchStatusPlugin.command("TOTAL_ITEMS", "status")
     def get_total_items(self, request):
         # since last time
-        value = self.stats("total_items")
+        value = self.stats["total_items"]
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s total items' % value);
         r.add_performance_data('items', value, warn=request.warn, crit=request.crit)
+        return r
 
+    @nagios.BatchStatusPlugin.command("TOTAL_CONNECTIONS", "status")
     def get_total_connections(self, request):
         # since last time
-        value = self.stats("total_connections")
+        value = self.stats["total_connections"]
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s total connections' % value);
         r.add_performance_data('connections', value, warn=request.warn, crit=request.crit)
+        return r
 
 
 if __name__ == "__main__":

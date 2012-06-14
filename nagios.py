@@ -79,27 +79,19 @@ class BasePlugin(object):
 
     def run(self):
         self.request = self.parser.parse_args(sys.argv[1:])
-        self.pre_check(self.request)
         result = self.check(self.request)
-        self.post_check(self.request)
         if result is not None:
             print result
             sys.exit(result.exit_code)
 
-    def pre_check(self, request):
-        pass
-
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
-    def post_check(self, request):
-        pass
-
     def verdict(self, value, request):
         # default verdict function
-        # ok   if value < warn            crit
-        # warn if         warn <= value < crit
-        # crit if         warn            crit <= value
+        # ok   if value <  warn             crit
+        # warn if          warn <= value <  crit
+        # crit if          warn             crit <= value
         status_code = Status.UNKNOWN
         if request.warn is not None and value < request.warn:
             status_code = Status.OK
@@ -114,14 +106,58 @@ class BasePlugin(object):
 class BatchStatusPlugin(BasePlugin):
     def __init__(self):
         super(BatchStatusPlugin, self).__init__()
-        self.parser.add_argument("-d", "--rootdir", default='/tmp/', type=str, required=False);
+        self.parser.add_argument("-d", "--rootdir", required=False,
+                                 default='/tmp/', type=str);
+        self.parser.add_argument("-t", "--type", required=True,
+                                 choices=self.__class__.commandmap.keys());
 
-    def pre_check(self, request):
-        self.stats = {}
-        self.laststats = self.retreive_last_status(request)
+    def check(self, request):
+        if hasattr(self.__class__, "commandmap"):
+            commandmap = self.__class__.commandmap
+            if request.type in commandmap and commandmap[request.type]:
+                result = commandmap[request.type](self, request)
+                if result:
+                    return result
+        return Result(request.type, Status.UNKNOWN, "mysterious status")
 
-    def post_check(self, request):
-        self.save_status(request)
+    @classmethod
+    def command(cls, command_str, manner=None):
+        if not hasattr(cls, "commandmap"):
+            cls.commandmap = {}
+        def add_command(method):
+            if manner == "cumulative":
+                method = BatchStatusPlugin.cumulative(method)
+            elif manner == "status":
+                method = BatchStatusPlugin.status(method)
+            cls.commandmap[command_str] = method
+            return method
+        return add_command
+
+    @staticmethod
+    def cumulative(method):
+        def new_command(self, request):
+            self.stats = self.parse_status_output(request)
+            if len(self.stats) == 0:
+                return Result(request.type, Status.CRITICAL,
+                                     "cannot get service status.")
+            self.laststats = self.retreive_last_status(request)
+            result = method(self, request)
+            self.save_status(request)
+            return result
+        return new_command
+
+    @staticmethod
+    def status(method):
+        def new_command(self, request):
+            self.stats = self.parse_status_output(request)
+            if len(self.stats) == 0:
+                return Result(request.type, Status.CRITICAL,
+                                     "cannot get service status.")
+            return method(self, request)
+        return new_command
+
+    def parse_status_output(self, request):
+        raise NotImplementedError('need to override BasePlugin.check in subclass')
 
     def retreive_last_status(self, request):
         laststats = {}
