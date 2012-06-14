@@ -3,7 +3,6 @@
 Created on May 31, 2012
 
 @author: yangming
-@copyright: appfirst inc.
 '''
 import re
 import nagios

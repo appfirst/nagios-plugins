@@ -2,7 +2,6 @@
 Created on May 29, 2012
 
 @author: yangming
-@copyright: appfirst inc.
 '''
 import argparse, sys
 import os, pickle

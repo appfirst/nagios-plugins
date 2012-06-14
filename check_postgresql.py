@@ -3,9 +3,7 @@
 Created on Jun 14, 2012
 
 @author: yangming
-@copyright: appfirst inc.
 '''
-
 import nagios
 from nagios import BatchStatusPlugin
 import commands
