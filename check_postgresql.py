@@ -11,7 +11,7 @@ import commands
 class PostgresChecker(BatchStatusPlugin):
     def __init__(self):
         super(PostgresChecker, self).__init__()
-        self.parser.add_argument("-f", "--filename", default='redis-cli_info', type=str, required=False);
+        self.parser.add_argument("-f", "--filename", default='psql', type=str, required=False);
 
     #TODO: replace all with "psql -c 'select * from pg_stat_database' -A" 
 
