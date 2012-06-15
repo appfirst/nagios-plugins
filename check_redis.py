@@ -33,8 +33,8 @@ class RedisChecker(BatchStatusPlugin):
                     pass
         return stats
 
-    @statsd.counter("sys.app.redis.operations_rate")
     @BatchStatusPlugin.command("OPERATIONS_RATE", "cumulative")
+    @statsd.counter("sys.app.redis.operations_rate")
     def get_operations_rate(self, request):
         # current
         queries = self.get_delta_value("total_commands_processed")
@@ -51,14 +51,14 @@ class RedisChecker(BatchStatusPlugin):
         r.add_performance_data('average_rate', value, warn=request.warn, crit=request.crit)
         return r
 
-    @statsd.counter("sys.app.redis.read_write_ratio")
     @BatchStatusPlugin.command("READ_WRITE_RATIO")
+    @statsd.counter("sys.app.redis.read_write_ratio")
     def get_read_write_ratio(self, request):
         return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
- 
-    @statsd.gauge("sys.app.redis.memory_used")
+
     @BatchStatusPlugin.command("MEMORY_USED", "status")
+    @statsd.gauge("sys.app.redis.memory_used")
     def get_memory_used(self, request):
         value = float(self.stats["used_memory"]) / 1024 / 1024
         status_code = self.verdict(value, request)
@@ -66,8 +66,8 @@ class RedisChecker(BatchStatusPlugin):
         r.add_performance_data("used_memory", value, "MB", warn=request.warn, crit=request.crit)
         return r
 
-    @statsd.gauge("sys.app.redis.changes_since_last_save")
     @BatchStatusPlugin.command("CHANGES_SINCE_LAST_SAVE", "status")
+    @statsd.gauge("sys.app.redis.changes_since_last_save")
     def get_changes_since_last_save(self, request):
         value = self.stats["changes_since_last_save"]
         status_code = self.verdict(value, request)
@@ -75,8 +75,8 @@ class RedisChecker(BatchStatusPlugin):
         r.add_performance_data("changes", value, warn=request.warn, crit=request.crit)
         return r
 
-    @statsd.gauge("sys.app.redis.total_keys")
     @BatchStatusPlugin.command("TOTAL_KEYS")
+    @statsd.gauge("sys.app.redis.total_keys")
     def get_total_keys(self, request):
         cmd = "redis-cli dbsize"
         output = commands.getoutput(cmd)
@@ -91,8 +91,8 @@ class RedisChecker(BatchStatusPlugin):
         r.add_performance_data('total_keys', value, warn=request.warn, crit=request.crit)
         return r
 
-    @statsd.counter("sys.app.redis.command_frequency")
     @BatchStatusPlugin.command("COMMAND_FREQUENCY")
+    @statsd.counter("sys.app.redis.command_frequency")
     def get_command_frequency(self, request):
         return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")

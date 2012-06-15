@@ -134,7 +134,7 @@ class BatchStatusPlugin(BasePlugin):
 
     @staticmethod
     def cumulative(method):
-        def new_command(self, request):
+        def cumulative_command(self, request):
             self.stats = self.parse_status_output(request)
             if len(self.stats) == 0:
                 return Result(request.type, Status.CRITICAL,
@@ -143,17 +143,18 @@ class BatchStatusPlugin(BasePlugin):
             result = method(self, request)
             self.save_status(request)
             return result
-        return new_command
+        return cumulative_command
 
     @staticmethod
     def status(method):
-        def new_command(self, request):
+        def status_command(self, request):
             self.stats = self.parse_status_output(request)
             if len(self.stats) == 0:
                 return Result(request.type, Status.CRITICAL,
                                      "cannot get service status.")
-            return method(self, request)
-        return new_command
+            result = method(self, request)
+            return result
+        return status_command
 
     def parse_status_output(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
