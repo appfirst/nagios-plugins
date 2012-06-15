@@ -91,6 +91,7 @@ class BasePlugin(object):
         # ok   if value <  warn             crit
         # warn if          warn <= value <  crit
         # crit if          warn             crit <= value
+        # if warn and crit is not defined then it's OK.
         status_code = Status.UNKNOWN
         if request.warn is not None and value < request.warn:
             status_code = Status.OK

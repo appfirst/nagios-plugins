@@ -16,7 +16,7 @@ def timer(bucket, sample_rate=1):
             # TODO: deal with more than one performance data
             if len(result.perf_data_list):
                 value = result.perf_data_list[0]['value']
-                Statsd.timing(bucket, value, sample_rate, result.message)
+                Statsd.timing(bucket, value, sample_rate, result.status)
             return result
         return wrap_statsd
     return make_wrapper
@@ -28,7 +28,7 @@ def counter(bucket, sample_rate=1):
             # TODO: deal with more than one performance data
             if len(result.perf_data_list):
                 value = result.perf_data_list[0]['value']
-                Statsd.update_stats(bucket, value, sample_rate, result.message)
+                Statsd.update_stats(bucket, value, sample_rate, result.status)
             return result
         return wrap_statsd
     return make_wrapper
@@ -40,7 +40,7 @@ def gauge(bucket, sample_rate=1):
             # TODO: deal with more than one performance data
             if len(result.perf_data_list):
                 value = result.perf_data_list[0]['value']
-                Statsd.gauge(bucket, value, sample_rate, result.message)
+                Statsd.gauge(bucket, value, sample_rate, result.status)
             return result
         return wrap_statsd
     return make_wrapper
