@@ -8,6 +8,9 @@ _rootpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(
     os.path.join(_rootpath, "..", "statsd_clients", "python"))
 from client import Statsd
+from afclient import AFTransport
+
+Statsd.set_transport(AFTransport())
 
 def timer(bucket, sample_rate=1):
     def make_wrapper(method):
