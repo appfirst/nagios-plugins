@@ -6,16 +6,16 @@ Created on Jun 7, 2012
 @copyright: appfirst inc.
 '''
 import nagios
-from nagios import BatchStatusPlugin
+from nagios import BatchStatusPlugin as batch
 import commands
 
 class PassengerChecker(nagios.BatchStatusPlugin):
-    def __init__(self):
-        super(PassengerChecker, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(PassengerChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", required=False, type=str,
                                  default="passenger-status");
 
-    def parse_status_output(self, request):
+    def retreive_current_status(self, request):
         stats = {}
         cmd = "/usr/bin/passenger-status"
         output = commands.getoutput(cmd)
@@ -36,7 +36,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
                         pass
         return stats
 
-    @BatchStatusPlugin.command("MAX_PROCESSES", "status")
+    @batch.command("MAX_PROCESSES", batch.status)
     def get_procs(self, request):
         value = self.stats["count"]
         status_code = self.verdict(value, request)
@@ -44,7 +44,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         r.add_performance_data("running_procs", value, warn=request.warn, crit=request.crit)
         return r
 
-    @BatchStatusPlugin.command("RUNNING_PROCESSES", "status")
+    @batch.command("RUNNING_PROCESSES", batch.status)
     def get_max_procs(self, request):
         value = self.stats["max"]
         status_code = self.verdict(value, request)
@@ -52,7 +52,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         r.add_performance_data("max", value, warn=request.warn, crit=request.crit)
         return r
 
-    @BatchStatusPlugin.command("ACTIVE_PROCESSES", "status")
+    @batch.command("ACTIVE_PROCESSES", batch.status)
     def get_active_procs(self, request):
         value = self.stats["active"]
         status_code = self.verdict(value, request)
@@ -61,4 +61,5 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         return r
 
 if __name__ == "__main__":
-    PassengerChecker().run()
+    import sys
+    PassengerChecker().run(sys.argv[1:])

@@ -35,14 +35,14 @@ def counter(bucket, sample_rate=1):
         return wrap_statsd
     return make_wrapper
 
-def gauge(bucket, sample_rate=1):
+def gauge(bucket):
     def make_wrapper(method):
         def wrap_statsd(*args, **kwargs):
             result = method(*args, **kwargs)
             # TODO: deal with more than one performance data
             if len(result.perf_data_list):
                 value = result.perf_data_list[0]['value']
-                Statsd.gauge(bucket, value, sample_rate, result.status)
+                Statsd.gauge(bucket, value, message=result.status)
             return result
         return wrap_statsd
     return make_wrapper

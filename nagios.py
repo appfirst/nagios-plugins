@@ -23,6 +23,10 @@ class Status(object):
         else:
             return 'UNKNOWN'
 
+    @staticmethod
+    def to_exit_code(status_code):
+        return status_code
+
 class Result(object):
     def __init__(self, service, status_code, message):
         self.service = service.upper()
@@ -30,10 +34,7 @@ class Result(object):
         self.status = Status.to_status(status_code)
         self.message = message
         self.perf_data_list = []
-        self.exit_code = self.get_exit_code(status_code)
-
-    def get_exit_code(self, status_code):
-        return status_code
+        self.exit_code = Status.to_exit_code(status_code)
 
     def add_performance_data(self, label, value, UOM=None,
                              warn=None, crit=None, minv=None, maxv=None):
@@ -76,12 +77,13 @@ class BasePlugin(object):
     def _parse_range(self, range_str):
         pass
 
-    def run(self):
-        self.request = self.parser.parse_args(sys.argv[1:])
+    def run(self, args):
+        self.request = self.parser.parse_args(args)
         result = self.check(self.request)
         if result is not None:
             print result
             sys.exit(result.exit_code)
+        sys.exit(Status.to_exit_code(Status.UNKNOWN))
 
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
@@ -104,8 +106,8 @@ class BasePlugin(object):
         return status_code
 
 class BatchStatusPlugin(BasePlugin):
-    def __init__(self):
-        super(BatchStatusPlugin, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(BatchStatusPlugin, self).__init__(*args, **kwargs)
         self.parser.add_argument("-d", "--rootdir", required=False,
                                  default='/tmp/', type=str);
         self.parser.add_argument("-t", "--type", required=True,
@@ -121,14 +123,16 @@ class BatchStatusPlugin(BasePlugin):
         return Result(request.type, Status.UNKNOWN, "mysterious status")
 
     @classmethod
-    def command(cls, command_str, manner=None):
+    def command(cls, command_str, wrappers=None):
         if not hasattr(cls, "commandmap"):
             cls.commandmap = {}
+        if wrappers is None:
+            wrappers = []
+        elif type(wrappers) is not list:
+            wrappers = [wrappers]
         def add_command(method):
-            if manner == "cumulative":
-                method = BatchStatusPlugin.cumulative(method)
-            elif manner == "status":
-                method = BatchStatusPlugin.status(method)
+            for w in wrappers:
+                method = w(method)
             cls.commandmap[command_str] = method
             return method
         return add_command
@@ -136,7 +140,7 @@ class BatchStatusPlugin(BasePlugin):
     @staticmethod
     def cumulative(method):
         def cumulative_command(self, request):
-            self.stats = self.parse_status_output(request)
+            self.stats = self.retreive_current_status(request)
             if len(self.stats) == 0:
                 return Result(request.type, Status.CRITICAL,
                                      "cannot get service status.")
@@ -149,7 +153,7 @@ class BatchStatusPlugin(BasePlugin):
     @staticmethod
     def status(method):
         def status_command(self, request):
-            self.stats = self.parse_status_output(request)
+            self.stats = self.retreive_current_status(request)
             if len(self.stats) == 0:
                 return Result(request.type, Status.CRITICAL,
                                      "cannot get service status.")
@@ -157,8 +161,9 @@ class BatchStatusPlugin(BasePlugin):
             return result
         return status_command
 
-    def parse_status_output(self, request):
-        raise NotImplementedError('need to override BasePlugin.check in subclass')
+    def retreive_current_status(self, request):
+        raise NotImplementedError(
+            'need to override BatchStatusPlugin.retreive_current_status in subclass')
 
     def retreive_last_status(self, request):
         laststats = {}
