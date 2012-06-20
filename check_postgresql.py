@@ -12,13 +12,15 @@ class PostgresChecker(BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PostgresChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", default='psql', type=str, required=False);
+        self.parser.add_argument("-u", "--user", required=False, type=str);
+        self.parser.add_argument("-p", "--password", required=False, type=str);
 
     #TODO: replace all with "psql -c 'select * from pg_stat_database' -A" 
 
     def retreive_current_status(self, request, colname):
         sql_stmt = "select datname, %s from pg_stat_database;" % colname
         sub_stats = {}
-        rows = self.run_sql(sql_stmt)
+        rows = self.run_sql(sql_stmt, request)
         if len(rows):
             return sub_stats
         for datname, value in rows:
@@ -85,8 +87,12 @@ class PostgresChecker(BatchStatusPlugin):
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
 
-    def run_sql(self, sql_stmt):
-        cmd_template = "psql -c \'%s\' -A -t"
+    def run_sql(self, sql_stmt, request):
+        cmd_template = "psql -Atc \'%s\'"
+        if hasattr(request, "user") and request.user is not None:
+            cmd_template = "-u %s " % request.user + cmd_template
+        if hasattr(request, "password") and request.password is not None:
+            cmd_template += " -password=%s" % request.password
         cmd = cmd_template % sql_stmt
         output = commands.getoutput(cmd)
         if "command not found" in output:
