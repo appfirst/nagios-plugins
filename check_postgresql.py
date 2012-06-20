@@ -19,7 +19,7 @@ class PostgresChecker(BatchStatusPlugin):
         sql_stmt = "select datname, %s from pg_stat_database;" % colname
         sub_stats = {}
         rows = self.run_sql(sql_stmt)
-        if not len(rows):
+        if len(rows):
             return sub_stats
         for datname, value in rows:
             try:
@@ -90,6 +90,10 @@ class PostgresChecker(BatchStatusPlugin):
         cmd = cmd_template % sql_stmt
         output = commands.getoutput(cmd)
         if "command not found" in output:
+            return []
+        elif "FATAL:  role \"root\" does not exist" in output:
+            return []
+        elif "|" not in output:
             return []
         return [row.split('|') for row in output.split("\n")]
 
