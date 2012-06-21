@@ -13,7 +13,7 @@ from StringIO import StringIO
 import nagios
 
 class TestPlugin(unittest.TestCase):
-    def assert_status(self, argument):
+    def assert_status(self, argument, status_code=nagios.Status.OK):
         # change the standard output to StringIO()
         original_stdout, sys.stdout = sys.stdout, StringIO()
         args = argument.split()
@@ -30,8 +30,7 @@ class TestPlugin(unittest.TestCase):
         # print and assert
         print "\targv:   %s" % argument
         print "\tstdout: %s" % output
-        self.assertEqual(nagios.Status.to_status(exit_code), "OK")
-
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.test_']
-    unittest.main()
+        self.assertEqual(exit_code, status_code,
+                         "return %s, expecting %s" %(
+                            nagios.Status.to_status(exit_code),
+                            nagios.Status.to_status(status_code)))

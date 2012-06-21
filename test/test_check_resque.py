@@ -3,13 +3,17 @@ Created on Jun 20, 2012
 
 @author: Yangming
 '''
-import sys, os
-_rootpath = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(
-    os.path.join(_rootpath, ".."))
+import sys
+from os import path
+_rootpath = path.dirname(path.realpath(__file__))
+sys.path.append(path.join(_rootpath, ".."))
 
+import unittest
 from test_plugin import TestPlugin
 
 class TestResqueChecker(TestPlugin):
-    def test_check_resque(self):
+    def setUp(self):
         pass
+
+if __name__ == "__main__":
+    unittest.main()
