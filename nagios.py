@@ -140,11 +140,11 @@ class BatchStatusPlugin(BasePlugin):
     @staticmethod
     def cumulative(method):
         def cumulative_command(self, request):
-            self.stats = self.retreive_current_status(request)
+            self.stats = self.retrieve_current_status(request)
             if len(self.stats) == 0:
                 return Result(request.type, Status.CRITICAL,
                                      "cannot get service status.")
-            self.laststats = self.retreive_last_status(request)
+            self.laststats = self.retrieve_last_status(request)
             result = method(self, request)
             self.save_status(request)
             return result
@@ -153,7 +153,7 @@ class BatchStatusPlugin(BasePlugin):
     @staticmethod
     def status(method):
         def status_command(self, request):
-            self.stats = self.retreive_current_status(request)
+            self.stats = self.retrieve_current_status(request)
             if len(self.stats) == 0:
                 return Result(request.type, Status.CRITICAL,
                                      "cannot get service status.")
@@ -161,11 +161,11 @@ class BatchStatusPlugin(BasePlugin):
             return result
         return status_command
 
-    def retreive_current_status(self, request):
+    def retrieve_current_status(self, request):
         raise NotImplementedError(
-            'need to override BatchStatusPlugin.retreive_current_status in subclass')
+            'need to override BatchStatusPlugin.retrieve_current_status in subclass')
 
-    def retreive_last_status(self, request):
+    def retrieve_last_status(self, request):
         laststats = {}
         try:
             fn = os.path.join(request.rootdir, request.filename)

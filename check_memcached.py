@@ -16,7 +16,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-H", "--host", required=False, type=str, default="localhost");
         self.parser.add_argument("-p", "--port", required=False, type=str, default="11211");
 
-    def retreive_current_status(self, request):
+    def retrieve_current_status(self, request):
         stats = {}
         cmd = "echo 'stats' | nc"
         cmd += " %s %s" % (request.host, request.port)

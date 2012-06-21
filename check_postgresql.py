@@ -17,11 +17,11 @@ class PostgresChecker(BatchStatusPlugin):
 
     #TODO: replace all with "psql -c 'select * from pg_stat_database' -A" 
 
-    def retreive_current_status(self, request, colname):
+    def retrieve_pg_stat_database(self, request, colname):
         sql_stmt = "select datname, %s from pg_stat_database;" % colname
         sub_stats = {}
         rows = self.run_sql(sql_stmt, request)
-        if len(rows):
+        if len(rows) == 0:
             return sub_stats
         for datname, value in rows:
             try:
@@ -33,7 +33,7 @@ class PostgresChecker(BatchStatusPlugin):
 
     @BatchStatusPlugin.command("TUPLE_READ")
     def get_tuple_read(self, request):
-        sub_stats = self.retreive_current_status(request, "tup_fetched")
+        sub_stats = self.retrieve_pg_stat_database(request, "tup_fetched")
         if len(sub_stats) == 0:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -47,7 +47,7 @@ class PostgresChecker(BatchStatusPlugin):
 
     @BatchStatusPlugin.command("TUPLE_INSERTED")
     def get_tuple_inserted(self, request):
-        sub_stats = self.retreive_current_status(request, "tup_inserted")
+        sub_stats = self.retrieve_pg_stat_database(request, "tup_inserted")
         if len(sub_stats) == 0:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -61,7 +61,7 @@ class PostgresChecker(BatchStatusPlugin):
 
     @BatchStatusPlugin.command("TUPLE_UPDATED")
     def get_tuple_updated(self, request):
-        sub_stats = self.retreive_current_status(request, "tup_updated")
+        sub_stats = self.retrieve_pg_stat_database(request, "tup_updated")
         if len(sub_stats) == 0:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -75,7 +75,7 @@ class PostgresChecker(BatchStatusPlugin):
 
     @BatchStatusPlugin.command("TUPLE_DELETED")
     def get_tuple_deleted(self, request):
-        sub_stats = self.retreive_current_status(request, "tup_deleted")
+        sub_stats = self.retrieve_pg_stat_database(request, "tup_deleted")
         if len(sub_stats) == 0:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -90,9 +90,9 @@ class PostgresChecker(BatchStatusPlugin):
     def run_sql(self, sql_stmt, request):
         cmd_template = "psql -Atc \'%s\'"
         if hasattr(request, "user") and request.user is not None:
-            cmd_template = "-u %s " % request.user + cmd_template
+            cmd_template = "sudo -u %s " % request.user + cmd_template
         if hasattr(request, "password") and request.password is not None:
-            cmd_template += " -password=%s" % request.password
+            cmd_template += " -p %s" % request.password
         cmd = cmd_template % sql_stmt
         output = commands.getoutput(cmd)
         if "command not found" in output:

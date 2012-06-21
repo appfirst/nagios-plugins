@@ -16,7 +16,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-u", "--user", required=False, type=str);
         self.parser.add_argument("-p", "--password", required=False, type=str);
 
-    def retreive_current_status(self, request):
+    def retrieve_current_status(self, request):
         stats = {}
         cmd = "mysqladmin"
         if hasattr(request, "user") and request.user is not None:

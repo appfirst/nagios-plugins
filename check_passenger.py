@@ -15,9 +15,10 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-f", "--filename", required=False, type=str,
                                  default="passenger-status");
 
-    def retreive_current_status(self, request):
+    def retrieve_current_status(self, request):
         stats = {}
-        cmd = "/usr/bin/passenger-status"
+        # TODO: make sudo and path optional
+        cmd = "sudo /usr/bin/passenger-status"
         output = commands.getoutput(cmd)
         if "ERROR" in output:
             return stats

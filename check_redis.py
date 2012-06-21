@@ -15,7 +15,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         super(RedisChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", default='redis-cli_info', type=str, required=False);
 
-    def retreive_current_status(self, request):
+    def retrieve_current_status(self, request):
         stats = {}
         cmd = "redis-cli info"
         output = commands.getoutput(cmd)
