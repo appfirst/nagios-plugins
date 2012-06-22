@@ -108,22 +108,32 @@ class BasePlugin(object):
 class CommandBasedPlugin(BasePlugin):
     def __init__(self, *args, **kwargs):
         super(CommandBasedPlugin, self).__init__(*args, **kwargs)
+        if hasattr(self.__class__, "method2commands"):
+            method2commands = self.__class__.method2commands
+        else:
+            method2commands = {}
+        self.commands = {}
+        for attrname in dir(self):
+            obj = getattr(self, attrname)
+            if callable(obj) and hasattr(obj,"im_func"):
+                method = obj.im_func
+                if method in method2commands:
+                    command_str = method2commands[method]
+                    self.commands[command_str] = method
         self.parser.add_argument("-t", "--type", required=True,
-                                 choices=self.__class__.commandmap.keys());
+                                 choices=self.commands.keys());
 
     def check(self, request):
-        if hasattr(self.__class__, "commandmap"):
-            commandmap = self.__class__.commandmap
-            if request.type in commandmap and commandmap[request.type]:
-                result = commandmap[request.type](self, request)
-                if result:
-                    return result
+        if request.type in self.commands and self.commands[request.type]:
+            result = self.commands[request.type](self, request)
+            if result:
+                return result
         return Result(request.type, Status.UNKNOWN, "mysterious status")
 
-    @staticmethod
-    def command(command_str, wrappers=None):
-        if not hasattr(CommandBasedPlugin, "commandmap"):
-            CommandBasedPlugin.commandmap = {}
+    @classmethod
+    def command(cls, command_str, wrappers=None):
+        if not hasattr(cls, "method2commands"):
+            cls.method2commands = {}
         if wrappers is None:
             wrappers = []
         elif type(wrappers) is not list:
@@ -131,7 +141,7 @@ class CommandBasedPlugin(BasePlugin):
         def add_command(method):
             for w in wrappers:
                 method = w(method)
-            CommandBasedPlugin.commandmap[command_str] = method
+            cls.method2commands[method] = command_str
             return method
         return add_command
 

@@ -12,6 +12,9 @@ import unittest
 from test_plugin import TestPlugin
 from check_mongodb import MongoDBChecker
 
+#import nagios
+#nagios.CommandBasedPlugin.commandmap = {}
+
 class TestMongoDBChecker(TestPlugin):
     def setUp(self):
         self.checker = MongoDBChecker()
@@ -20,7 +23,7 @@ class TestMongoDBChecker(TestPlugin):
     def test_get_connections(self):
         self.assert_status("-t CONNECTIONS")
 
-    def test_gget_memory_used(self):
+    def test_get_memory_used(self):
         self.assert_status("-t MEMORY_USED")
 
     def test_get_insert_rate(self):

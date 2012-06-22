@@ -3,6 +3,7 @@ Created on Jun 22, 2012
 
 @author: Yangming
 '''
+import re
 import nagios
 from nagios import CommandBasedPlugin as plugin
 import commands
@@ -33,6 +34,11 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
                               minutes=uptime[1],
                               seconds=uptime[2]).total_seconds()
                 stats[k] = sec
+            elif k == "res":
+                pattern = re.compile('(\d+)m')
+                matchResult = pattern.match(v)
+                value = int(matchResult.groups(1)[0])
+                stats[k] = value
             else:
                 try:
                     stats[k] = int(v)
