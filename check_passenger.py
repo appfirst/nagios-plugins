@@ -6,7 +6,7 @@ Created on Jun 7, 2012
 @copyright: appfirst inc.
 '''
 import nagios
-from nagios import BatchStatusPlugin as batch
+from nagios import CommandBasedPlugin as plugin
 import commands
 
 class PassengerChecker(nagios.BatchStatusPlugin):
@@ -37,7 +37,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
                         pass
         return stats
 
-    @batch.command("MAX_PROCESSES", batch.status)
+    @plugin.command("MAX_PROCESSES", nagios.BatchStatusPlugin.status)
     def get_procs(self, request):
         value = self.stats["count"]
         status_code = self.verdict(value, request)
@@ -45,7 +45,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         r.add_performance_data("running_procs", value, warn=request.warn, crit=request.crit)
         return r
 
-    @batch.command("RUNNING_PROCESSES", batch.status)
+    @plugin.command("RUNNING_PROCESSES", nagios.BatchStatusPlugin.status)
     def get_max_procs(self, request):
         value = self.stats["max"]
         status_code = self.verdict(value, request)
@@ -53,7 +53,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         r.add_performance_data("max", value, warn=request.warn, crit=request.crit)
         return r
 
-    @batch.command("ACTIVE_PROCESSES", batch.status)
+    @plugin.command("ACTIVE_PROCESSES", nagios.BatchStatusPlugin.status)
     def get_active_procs(self, request):
         value = self.stats["active"]
         status_code = self.verdict(value, request)

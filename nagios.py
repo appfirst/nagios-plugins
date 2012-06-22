@@ -105,11 +105,9 @@ class BasePlugin(object):
             status_code = Status.OK
         return status_code
 
-class BatchStatusPlugin(BasePlugin):
+class CommandBasedPlugin(BasePlugin):
     def __init__(self, *args, **kwargs):
-        super(BatchStatusPlugin, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-d", "--rootdir", required=False,
-                                 default='/tmp/', type=str);
+        super(CommandBasedPlugin, self).__init__(*args, **kwargs)
         self.parser.add_argument("-t", "--type", required=True,
                                  choices=self.__class__.commandmap.keys());
 
@@ -122,10 +120,10 @@ class BatchStatusPlugin(BasePlugin):
                     return result
         return Result(request.type, Status.UNKNOWN, "mysterious status")
 
-    @classmethod
-    def command(cls, command_str, wrappers=None):
-        if not hasattr(cls, "commandmap"):
-            cls.commandmap = {}
+    @staticmethod
+    def command(command_str, wrappers=None):
+        if not hasattr(CommandBasedPlugin, "commandmap"):
+            CommandBasedPlugin.commandmap = {}
         if wrappers is None:
             wrappers = []
         elif type(wrappers) is not list:
@@ -133,9 +131,15 @@ class BatchStatusPlugin(BasePlugin):
         def add_command(method):
             for w in wrappers:
                 method = w(method)
-            cls.commandmap[command_str] = method
+            CommandBasedPlugin.commandmap[command_str] = method
             return method
         return add_command
+
+class BatchStatusPlugin(CommandBasedPlugin):
+    def __init__(self, *args, **kwargs):
+        super(BatchStatusPlugin, self).__init__(*args, **kwargs)
+        self.parser.add_argument("-d", "--rootdir", required=False,
+                                 default='/tmp/', type=str);
 
     @staticmethod
     def cumulative(method):
