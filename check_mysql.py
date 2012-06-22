@@ -123,7 +123,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         value = self.get_delta_value("Connections")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s new connections' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        r.add_performance_data('conns', value, warn=request.warn, crit=request.crit)
         return r
 
     @plugin.command("TOTAL_BYTES", nagios.BatchStatusPlugin.cumulative)
