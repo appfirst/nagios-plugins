@@ -27,14 +27,13 @@ class PassengerChecker(nagios.BatchStatusPlugin):
             if len(pair) == 2:
                 k = pair[0].strip()
                 v = pair[1].strip()
-                stats[k] = v
                 try:
                     stats[k] = int(v)
                 except ValueError:
                     try:
                         stats[k] = float(v)
                     except ValueError:
-                        pass
+                        stats[k] = v
         return stats
 
     @plugin.command("MAX_PROCESSES", nagios.BatchStatusPlugin.status)

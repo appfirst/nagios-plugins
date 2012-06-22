@@ -23,14 +23,13 @@ class RedisChecker(nagios.BatchStatusPlugin):
             return stats
         for l in output.split('\r\n'):
             k, v = l.split(':')
-            stats[k] = v
             try:
                 stats[k] = int(v)
             except ValueError:
                 try:
                     stats[k] = float(v)
                 except ValueError:
-                    pass
+                    stats[k] = v
         return stats
 
     @plugin.command("OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)

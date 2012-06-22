@@ -28,14 +28,13 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             fields = l.split('|')[1:3]
             k = fields[0].strip()
             v = fields[1].strip()
-            stats.setdefault(k, v)
             try:
                 stats[k] = int(v)
             except ValueError:
                 try:
                     stats[k] = float(v)
                 except ValueError:
-                    pass
+                    stats[k] = v
         return stats
 
     @plugin.command("QUERIES_PER_SECOND", nagios.BatchStatusPlugin.cumulative)

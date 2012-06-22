@@ -29,14 +29,13 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
                 continue
             k = triple[1]
             v = triple[2]
-            stats[k] = v
             try:
                 stats[k] = int(v)
             except ValueError:
                 try:
                     stats[k] = float(v)
                 except ValueError:
-                    pass
+                    stats[k] = v
         return stats
 
     @plugin.command("OPERATIONS_SET_REQUESTS", nagios.BatchStatusPlugin.cumulative)
