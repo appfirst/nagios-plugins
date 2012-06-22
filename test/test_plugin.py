@@ -11,6 +11,7 @@ sys.path.append(
 import unittest
 from StringIO import StringIO
 import nagios
+import time
 
 class TestPlugin(unittest.TestCase):
     def assert_status(self, argument, status_code=nagios.Status.OK):
@@ -19,17 +20,20 @@ class TestPlugin(unittest.TestCase):
         args = argument.split()
         # get output and exit_code
         exit_code = 0
+        start = time.time()
         try:
             self.checker.run(args)
         except SystemExit as se:
             exit_code = se.code
         output = sys.stdout.getvalue()
+        duration = time.time() - start
         # change the standard output back
         sys.stdout.close()
         sys.stdout = original_stdout
         # print and assert
         print "\targv:   %s" % argument
-        print "\tstdout: %s" % output
+        print "\tstdout: %s" % output.rstrip()
+        print "\tran in: %s secs" % duration
         self.assertEqual(exit_code, status_code,
                          "return %s, expecting %s" %(
                             nagios.Status.to_status(exit_code),

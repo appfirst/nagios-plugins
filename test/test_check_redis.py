@@ -15,7 +15,7 @@ from check_redis import RedisChecker
 class TestRedisChecker(TestPlugin):
     def setUp(self):
         self.checker = RedisChecker()
-        print ' - testing: check_redis'
+        print 'check_redis'
 
     def test_get_operations_rate(self):
         self.assert_status("-t OPERATIONS_RATE")

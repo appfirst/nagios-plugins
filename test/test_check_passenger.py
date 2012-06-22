@@ -15,7 +15,7 @@ from check_passenger import PassengerChecker
 class TestPassengerChecker(TestPlugin):
     def setUp(self):
         self.checker = PassengerChecker()
-        print ' - testing: check_passenger'
+        print 'check_passenger'
 
     def test_get_max_procs(self):
         self.assert_status("-t MAX_PROCESSES")

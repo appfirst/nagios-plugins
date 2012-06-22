@@ -15,7 +15,7 @@ from check_mysql import MySqlChecker
 class TestMySqlChecker(TestPlugin):
     def setUp(self):
         self.checker = MySqlChecker()
-        print ' - testing: check_mysql'
+        print 'check_mysql'
 
     def test_get_queries_per_second(self):
         self.assert_status("-t QUERIES_PER_SECOND")

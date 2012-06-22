@@ -15,7 +15,7 @@ from check_memcached import MemcachedChecker
 class TestMemcachedChecker(TestPlugin):
     def setUp(self):
         self.checker = MemcachedChecker()
-        print ' - testing: check_memcached'
+        print 'check_memcached'
 
     def test_get_cmd_set(self):
         self.assert_status("-t OPERATIONS_SET_REQUESTS")
