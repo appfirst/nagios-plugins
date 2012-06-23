@@ -8,6 +8,7 @@ Created on Jun 7, 2012
 import nagios
 from nagios import CommandBasedPlugin as plugin
 import commands
+import statsd
 
 class PassengerChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
@@ -37,6 +38,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         return stats
 
     @plugin.command("MAX_PROCESSES", nagios.BatchStatusPlugin.status)
+    @statsd.gauge("sys.app.passenger.max_processes")
     def get_procs(self, request):
         value = self.stats["count"]
         status_code = self.verdict(value, request)
@@ -45,6 +47,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("RUNNING_PROCESSES", nagios.BatchStatusPlugin.status)
+    @statsd.gauge("sys.app.passenger.running_processes")
     def get_max_procs(self, request):
         value = self.stats["max"]
         status_code = self.verdict(value, request)
@@ -53,6 +56,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("ACTIVE_PROCESSES", nagios.BatchStatusPlugin.status)
+    @statsd.gauge("sys.app.passenger.active_processes")
     def get_active_procs(self, request):
         value = self.stats["active"]
         status_code = self.verdict(value, request)

@@ -50,7 +50,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return stats
 
     @plugin.command("CONNECTIONS", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.mongodb.connections")
+    @statsd.gauge("sys.app.mongodb.connections")
     def get_connections(self, request):
         value = self.get_delta_value("conn")
         status_code = self.verdict(value, request)
@@ -59,7 +59,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("MEMORY_USED", nagios.BatchStatusPlugin.status)
-    @statsd.counter("sys.app.mongodb.memory_used")
+    @statsd.gauge("sys.app.mongodb.memory_used")
     def get_memory_used(self, request):
         value = self.stats["res"]
         status_code = self.verdict(value, request)
@@ -68,7 +68,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("INSERT_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.mongodb.insert_rate")
+    @statsd.gauge("sys.app.mongodb.insert_rate")
     def get_insert_rate(self, request):
         queries = self.get_delta_value("insert")
         sec = self.get_delta_value("time")
@@ -79,7 +79,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("UPDATE_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.mongodb.update_rate")
+    @statsd.gauge("sys.app.mongodb.update_rate")
     def get_update_rate(self, request):
         queries = self.get_delta_value("update")
         sec = self.get_delta_value("time")
@@ -90,7 +90,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("COMMAND_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.mongodb.command_rate")
+    @statsd.gauge("sys.app.mongodb.command_rate")
     def get_command_rate(self, request):
         queries = self.get_delta_value("command")
         sec = self.get_delta_value("time")
@@ -101,7 +101,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("QUERY_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.mongodb.query_rate")
+    @statsd.gauge("sys.app.mongodb.query_rate")
     def get_query_rate(self, request):
         queries = self.get_delta_value("query")
         sec = self.get_delta_value("time")
@@ -112,7 +112,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("DELETE_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.mongodb.delete_rate")
+    @statsd.gauge("sys.app.mongodb.delete_rate")
     def get_delete_rate(self, request):
         queries = self.get_delta_value("delete")
         sec = self.get_delta_value("time")
@@ -123,7 +123,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("LOCKED_PERCENTAGE", nagios.BatchStatusPlugin.status)
-    @statsd.counter("sys.app.mongodb.locked_ratio")
+    @statsd.gauge("sys.app.mongodb.locked_ratio")
     def get_locked_ratio(self, request):
         value = self.stats["locked %"]
         status_code = self.verdict(value, request)
@@ -132,7 +132,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("MISS_PERCENTAGE", nagios.BatchStatusPlugin.status)
-    @statsd.counter("sys.app.mongodb.miss_ratio")
+    @statsd.gauge("sys.app.mongodb.miss_ratio")
     def get_miss_ratio(self, request):
         value = self.stats["idx miss %"]
         status_code = self.verdict(value, request)

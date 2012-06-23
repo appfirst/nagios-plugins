@@ -51,7 +51,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("READ_WRITE_RATIO")
-    @statsd.counter("sys.app.redis.read_write_ratio")
+    @statsd.gauge("sys.app.redis.read_write_ratio")
     def get_read_write_ratio(self, request):
         return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
@@ -91,7 +91,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("COMMAND_FREQUENCY")
-    @statsd.counter("sys.app.redis.command_frequency")
+    @statsd.gauge("sys.app.redis.command_frequency")
     def get_command_frequency(self, request):
         return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")

@@ -39,7 +39,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         return stats
 
     @plugin.command("OPERATIONS_SET_REQUESTS", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.memcached.cmd_set_requests")
+    @statsd.counter("sys.app.memcached.operations_set_requests")
     def get_cmd_set(self, request):
         # since last time
         queries = self.get_delta_value("cmd_set")
@@ -57,7 +57,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("OPERATIONS_GET_REQUESTS", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.memcached.cmd_get_requests")
+    @statsd.counter("sys.app.memcached.operations_get_requests")
     def get_cmd_get(self, request):
         # since last time
         queries = self.get_delta_value("cmd_get")
