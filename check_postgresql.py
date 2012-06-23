@@ -153,13 +153,9 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     def get_delta_value(self, request, statkey, sql_stmt):
         value, sub_stats = self._stats_by_database(request, sql_stmt)
 
-        print sub_stats
-
         self.laststats = self.retrieve_last_status(request)
         last_sub_stats = self.laststats.setdefault(statkey, [])
         self.laststats[statkey] = sub_stats
-
-        print last_sub_stats
 
         if len(last_sub_stats):
             last_value = reduce(lambda x,y:x+y, last_sub_stats.itervalues())
