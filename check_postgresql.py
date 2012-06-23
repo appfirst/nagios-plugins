@@ -7,6 +7,7 @@ Created on Jun 14, 2012
 import nagios
 from nagios import CommandBasedPlugin as plugin
 import commands
+import statsd
 
 class PostgresChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
@@ -16,6 +17,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-p", "--password", required=False, type=str);
 
     @plugin.command("CONNECTIONS_ACTIVE")
+    @statsd.gauge("sys.app.postgres.connections_active")
     def get_connections_active(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity " \
                    "WHERE waiting=\'f\' AND current_query<>\'<IDLE>\'"
@@ -29,6 +31,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("CONNECTIONS_WAITING")
+    @statsd.gauge("sys.app.postgres.connections_waiting")
     def get_connections_waiting(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE waiting=\'t\';"
         value = self._single_value_stat(request, sql_stmt, "%s waiting conns", "waiting")
@@ -41,6 +44,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("CONNECTIONS_IDLE")
+    @statsd.gauge("sys.app.postgres.conenctions_idle")
     def get_connections_idle(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE current_query=\'<IDLE>\';"
         value = self._single_value_stat(request, sql_stmt, "%s idle conns", "idle")
@@ -63,6 +67,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return value
 
     @plugin.command("DATABASE_SIZE")
+    @statsd.gauge("sys.app.postgres.database_size")
     def get_database_size(self, request):
         sql_stmt = "SELECT datname, pg_database_size(datname) FROM pg_database;"
         stat, sub_stats = self._stats_by_database(request, sql_stmt)
@@ -94,9 +99,11 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return stat, sub_stats
 
     @plugin.command("TUPLE_READ")
+    @statsd.counter("sys.app.postgres.tuple_fetched")
     def get_tuple_read(self, request):
-        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % "tup_fetched"
-        value, sub_stats = self._stats_by_database(request, sql_stmt)
+        statkey = "tup_fetched"
+        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
+        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s tuple fetched' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
@@ -105,9 +112,11 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("TUPLE_INSERTED")
+    @statsd.counter("sys.app.postgres.tuple_inserted")
     def get_tuple_inserted(self, request):
-        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % "tup_inserted"
-        value, sub_stats = self._stats_by_database(request, sql_stmt)
+        statkey = "tup_inserted"
+        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
+        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s tuple inserted' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
@@ -116,9 +125,11 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("TUPLE_UPDATED")
+    @statsd.counter("sys.app.postgres.tuple_updated")
     def get_tuple_updated(self, request):
-        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % "tup_updated"
-        value, sub_stats = self._stats_by_database(request, sql_stmt)
+        statkey = "tup_updated"
+        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
+        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s tuple updated' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
@@ -127,15 +138,36 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("TUPLE_DELETED")
+    @statsd.counter("sys.app.postgres.tuple_deleted")
     def get_tuple_deleted(self, request):
-        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % "tup_deleted"
-        value, sub_stats = self._stats_by_database(request, sql_stmt)
+        statkey = "tup_deleted"
+        sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
+        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s tuple deleted' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         for k, v in sub_stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
+
+    def get_delta_value(self, request, statkey, sql_stmt):
+        value, sub_stats = self._stats_by_database(request, sql_stmt)
+
+        print sub_stats
+
+        self.laststats = self.retrieve_last_status(request)
+        last_sub_stats = self.laststats.setdefault(statkey, [])
+        self.laststats[statkey] = sub_stats
+
+        print last_sub_stats
+
+        if len(last_sub_stats):
+            last_value = reduce(lambda x,y:x+y, last_sub_stats.itervalues())
+            value -= last_value
+            for database in sub_stats:
+                sub_stats[database] -= last_sub_stats.setdefault(database, 0)
+        self.save_status(request)
+        return value, sub_stats
 
     def run_sql(self, sql_stmt, request=None):
         cmd_template = "psql -Atc \"%s\""
