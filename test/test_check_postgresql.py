@@ -29,17 +29,29 @@ class TestPostgresChecker(TestPlugin):
     def test_get_database_size(self):
         self.assert_status("-u postgres -t DATABASE_SIZE")
 
+    def test_get_locks_access(self):
+        self.assert_status("-u postgres -t LOCKS_ACCESS")
+
+    def test_get_locks_row(self):
+        self.assert_status("-u postgres -t LOCKS_ROW")
+
+    def test_get_locks_share(self):
+        self.assert_status("-u postgres -t LOCKS_SHARE")
+
+    def test_get_locks_exclusive(self):
+        self.assert_status("-u postgres -t LOCKS_EXCLUSIVE")
+
     def test_get_tuple_read(self):
-        self.assert_status("-u postgres -t TUPLE_READ")
+        self.assert_status("-u postgres -t TUPLES_READ")
 
     def test_get_tuple_inserted(self):
-        self.assert_status("-u postgres -t TUPLE_INSERTED")
+        self.assert_status("-u postgres -t TUPLES_INSERTED")
 
     def test_get_tuple_updated(self):
-        self.assert_status("-u postgres -t TUPLE_UPDATED")
+        self.assert_status("-u postgres -t TUPLES_UPDATED")
 
     def test_get_tuple_deleted(self):
-        self.assert_status("-u postgres -t TUPLE_DELETED")
+        self.assert_status("-u postgres -t TUPLES_DELETED")
 
 if __name__ == "__main__":
     unittest.main()

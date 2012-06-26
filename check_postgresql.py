@@ -70,7 +70,11 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     @statsd.gauge("sys.app.postgres.database_size")
     def get_database_size(self, request):
         sql_stmt = "SELECT datname, pg_database_size(datname) FROM pg_database;"
-        stat, sub_stats = self._stats_by_database(request, sql_stmt)
+        retvalue = self._multi_value_stats(request, sql_stmt)
+        if retvalue is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                    "failed to check postgres. check arguments and try again.")
+        stat, sub_stats = retvalue
         # to MB
         value = float(stat)
         value /= 1024 * 1024
@@ -83,75 +87,176 @@ class PostgresChecker(nagios.BatchStatusPlugin):
             r.add_performance_data(k, v,  warn=request.warn, crit=request.crit)
         return r
 
-    def _stats_by_database(self, request, sql_stmt):
+    @plugin.command("LOCKS_ACCESS")
+    @statsd.counter("sys.app.postgres.locks_access")
+    def get_locks_access(self, request):
+        statkey = "access"
+        sql_stmt = "SELECT mode, count(*) " \
+                   "FROM pg_locks " \
+                   "GROUP BY mode " \
+                   "HAVING mode ILIKE \'%%%s%%\';" % statkey
+        value = 0
+        sub_stats = {}
+        retvalue = self._multi_value_stats(request, sql_stmt)
+        if retvalue:
+            value, sub_stats = retvalue
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, '%s locks access' % value);
+        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        for k, v in sub_stats.iteritems():
+            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
+        return r
+
+    @plugin.command("LOCKS_ROW")
+    @statsd.counter("sys.app.postgres.locks_row")
+    def get_locks_row(self, request):
+        statkey = "row"
+        sql_stmt = "SELECT mode, count(*) " \
+                   "FROM pg_locks " \
+                   "GROUP BY mode " \
+                   "HAVING mode ILIKE \'%%%s%%\';" % statkey
+        value = 0
+        sub_stats = {}
+        retvalue = self._multi_value_stats(request, sql_stmt)
+        if retvalue:
+            value, sub_stats = retvalue
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, '%s locks row' % value);
+        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        for k, v in sub_stats.iteritems():
+            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
+        return r
+
+    @plugin.command("LOCKS_SHARE")
+    @statsd.counter("sys.app.postgres.locks_share")
+    def get_locks_share(self, request):
+        statkey = "share"
+        sql_stmt = "SELECT mode, count(*) " \
+                   "FROM pg_locks " \
+                   "GROUP BY mode " \
+                   "HAVING mode ILIKE \'%%%s%%\';" % statkey
+        value = 0
+        sub_stats = {}
+        retvalue = self._multi_value_stats(request, sql_stmt)
+        if retvalue:
+            value, sub_stats = retvalue
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, '%s locks share' % value);
+        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        for k, v in sub_stats.iteritems():
+            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
+        return r
+
+    @plugin.command("LOCKS_EXCLUSIVE")
+    @statsd.counter("sys.app.postgres.locks_exclusive")
+    def get_locks_exclusive(self, request):
+        statkey = "exclusive"
+        sql_stmt = "SELECT mode, count(*) " \
+                   "FROM pg_locks " \
+                   "GROUP BY mode " \
+                   "HAVING mode ILIKE \'%%%s%%\';" % statkey
+        value = 0
+        sub_stats = {}
+        retvalue = self._multi_value_stats(request, sql_stmt)
+        if retvalue:
+            value, sub_stats = retvalue
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, '%s locks exclusive' % value);
+        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
+        for k, v in sub_stats.iteritems():
+            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
+        return r
+
+    def _multi_value_stats(self, request, sql_stmt):
         sub_stats = {}
         rows = self.run_sql(sql_stmt, request)
-        for datname, value in rows:
+        if len(rows) == 0:
+            return None
+        for substatname, value in rows:
             try:
                 value = int(value)
             except ValueError:
                 pass
-            sub_stats[datname] = value
+            sub_stats[substatname] = value
         if len(sub_stats) == 0:
-            return nagios.Result(request.type,nagios.Status.CRITICAL,
-                                "failed to check postgres. check arguments and try again.")
+            return None
         stat = reduce(lambda x,y:x+y, sub_stats.itervalues())
         return stat, sub_stats
 
-    @plugin.command("TUPLE_READ")
-    @statsd.counter("sys.app.postgres.tuple_fetched")
-    def get_tuple_read(self, request):
+    @plugin.command("TUPLES_READ")
+    @statsd.counter("sys.app.postgres.tuples_fetched")
+    def get_tuples_read(self, request):
         statkey = "tup_fetched"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
+        retvalue = self.get_delta_value(request, statkey, sql_stmt)
+        if retvalue is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                    "failed to check postgres. check arguments and try again.")
+        value, sub_stats = retvalue
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuple fetched' % value);
+        r = nagios.Result(request.type, status_code, '%s tuples fetched' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         for k, v in sub_stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("TUPLE_INSERTED")
-    @statsd.counter("sys.app.postgres.tuple_inserted")
-    def get_tuple_inserted(self, request):
+    @plugin.command("TUPLES_INSERTED")
+    @statsd.counter("sys.app.postgres.tuples_inserted")
+    def get_tuples_inserted(self, request):
         statkey = "tup_inserted"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
+        retvalue = self.get_delta_value(request, statkey, sql_stmt)
+        if retvalue is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                    "failed to check postgres. check arguments and try again.")
+        value, sub_stats = retvalue
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuple inserted' % value);
+        r = nagios.Result(request.type, status_code, '%s tuples inserted' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         for k, v in sub_stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("TUPLE_UPDATED")
-    @statsd.counter("sys.app.postgres.tuple_updated")
-    def get_tuple_updated(self, request):
+    @plugin.command("TUPLES_UPDATED")
+    @statsd.counter("sys.app.postgres.tuples_updated")
+    def get_tuples_updated(self, request):
         statkey = "tup_updated"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
+        retvalue = self.get_delta_value(request, statkey, sql_stmt)
+        if retvalue is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                    "failed to check postgres. check arguments and try again.")
+        value, sub_stats = retvalue
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuple updated' % value);
+        r = nagios.Result(request.type, status_code, '%s tuples updated' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         for k, v in sub_stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("TUPLE_DELETED")
-    @statsd.counter("sys.app.postgres.tuple_deleted")
-    def get_tuple_deleted(self, request):
+    @plugin.command("TUPLES_DELETED")
+    @statsd.counter("sys.app.postgres.tuples_deleted")
+    def get_tuples_deleted(self, request):
         statkey = "tup_deleted"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
+        retvalue = self.get_delta_value(request, statkey, sql_stmt)
+        if retvalue is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                    "failed to check postgres. check arguments and try again.")
+        value, sub_stats = retvalue
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuple deleted' % value);
+        r = nagios.Result(request.type, status_code, '%s tuples deleted' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         for k, v in sub_stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
 
     def get_delta_value(self, request, statkey, sql_stmt):
-        value, sub_stats = self._stats_by_database(request, sql_stmt)
+        retvalue = self._multi_value_stats(request, sql_stmt)
+        if retvalue:
+            value, sub_stats = retvalue
+        else:
+            return None
 
         self.laststats = self.retrieve_last_status(request)
         last_sub_stats = self.laststats.setdefault(statkey, [])
@@ -177,6 +282,8 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         if "command not found" in output:
             return []
         elif "FATAL:  role \"root\" does not exist" in output:
+            return []
+        elif output.strip() == "":
             return []
         return [tuple(row.split('|')) for row in output.split("\n")]
 
