@@ -111,7 +111,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("BYTES_ALLOCATED", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.memcached.bytes_allocated")
+    @statsd.gauge("sys.app.memcached.bytes_allocated")
     def get_bytes_allocated(self, request):
         # since last time
         total_bytes = self.get_delta_value("bytes")

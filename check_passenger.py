@@ -37,7 +37,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
                         stats[k] = v
         return stats
 
-    @plugin.command("MAX_PROCESSES", nagios.BatchStatusPlugin.status)
+    @plugin.command("RUNNING_PROCESSES", nagios.BatchStatusPlugin.status)
     @statsd.gauge("sys.app.passenger.max_processes")
     def get_procs(self, request):
         value = self.stats["count"]
@@ -46,7 +46,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         r.add_performance_data("running_procs", value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("RUNNING_PROCESSES", nagios.BatchStatusPlugin.status)
+    @plugin.command("MAX_PROCESSES", nagios.BatchStatusPlugin.status)
     @statsd.gauge("sys.app.passenger.running_processes")
     def get_max_procs(self, request):
         value = self.stats["max"]

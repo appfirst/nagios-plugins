@@ -32,9 +32,9 @@ class RedisChecker(nagios.BatchStatusPlugin):
                     stats[k] = v
         return stats
 
-    @plugin.command("OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.counter("sys.app.redis.operations_rate")
-    def get_operations_rate(self, request):
+    @plugin.command("CURRENT_OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)
+    @statsd.gauge("sys.app.redis.current_operations_rate")
+    def get_current_operations_rate(self, request):
         # current
         queries = self.get_delta_value("total_commands_processed")
         sec = self.get_delta_value("uptime_in_seconds")
@@ -42,11 +42,17 @@ class RedisChecker(nagios.BatchStatusPlugin):
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s commands per second' % value);
         r.add_performance_data('current_rate', value, warn=request.warn, crit=request.crit)
+        return r
 
+    @plugin.command("AVERAGE_OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)
+    @statsd.gauge("sys.app.redis.average_operations_rate")
+    def get_average_operations_rate(self, request):
         # average
         queries = self.stats["total_commands_processed"]
         sec = self.stats["uptime_in_seconds"]
         value = queries / sec
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, '%s commands per second' % value);
         r.add_performance_data('average_rate', value, warn=request.warn, crit=request.crit)
         return r
 
