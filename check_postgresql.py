@@ -88,7 +88,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("LOCKS_ACCESS")
-    @statsd.counter("sys.app.postgres.locks_access")
+    @statsd.gauge("sys.app.postgres.locks_access")
     def get_locks_access(self, request):
         statkey = "access"
         sql_stmt = "SELECT mode, count(*) " \
@@ -108,7 +108,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("LOCKS_ROW")
-    @statsd.counter("sys.app.postgres.locks_row")
+    @statsd.gauge("sys.app.postgres.locks_row")
     def get_locks_row(self, request):
         statkey = "row"
         sql_stmt = "SELECT mode, count(*) " \
@@ -128,7 +128,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("LOCKS_SHARE")
-    @statsd.counter("sys.app.postgres.locks_share")
+    @statsd.gauge("sys.app.postgres.locks_share")
     def get_locks_share(self, request):
         statkey = "share"
         sql_stmt = "SELECT mode, count(*) " \
@@ -148,7 +148,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("LOCKS_EXCLUSIVE")
-    @statsd.counter("sys.app.postgres.locks_exclusive")
+    @statsd.gauge("sys.app.postgres.locks_exclusive")
     def get_locks_exclusive(self, request):
         statkey = "exclusive"
         sql_stmt = "SELECT mode, count(*) " \

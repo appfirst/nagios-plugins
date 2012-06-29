@@ -192,7 +192,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, str(value) + '% hits');
         r.add_performance_data('hits', value, UOM="%", warn=request.warn, crit=request.crit)
         return r
-    
+
     @plugin.command("MISSES")
     @statsd.counter("sys.app.mongodb.misses")
     def get_misses(self, request):
@@ -205,7 +205,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, str(value) + '% misses');
         r.add_performance_data('misses', value, UOM="%", warn=request.warn, crit=request.crit)
         return r
-    
+
     @plugin.command("ACCESSES")
     @statsd.counter("sys.app.mongodb.accesses")
     def get_accesses(self, request):
