@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Created on Jun 14, 2012
 
@@ -12,16 +12,16 @@ import statsd
 class PostgresChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PostgresChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='psql', type=str, required=False);
-        self.parser.add_argument("-u", "--user", required=False, type=str);
-        self.parser.add_argument("-p", "--password", required=False, type=str);
+        self.parser.add_argument("-f", "--filename", default='psql', type=str, required=False)
+        self.parser.add_argument("-u", "--user", required=False, type=str)
+        self.parser.add_argument("-p", "--password", required=False, type=str)
 
     @plugin.command("CONNECTIONS_ACTIVE")
     @statsd.gauge("sys.app.postgres.connections_active")
     def get_connections_active(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity " \
                    "WHERE waiting=\'f\' AND current_query<>\'<IDLE>\'"
-        value = self._single_value_stat(request, sql_stmt, "%s active conns", "active")
+        value = self._single_value_stat(request, sql_stmt)
         if value is None:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -34,7 +34,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     @statsd.gauge("sys.app.postgres.connections_waiting")
     def get_connections_waiting(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE waiting=\'t\';"
-        value = self._single_value_stat(request, sql_stmt, "%s waiting conns", "waiting")
+        value = self._single_value_stat(request, sql_stmt)
         if value is None:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -47,7 +47,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     @statsd.gauge("sys.app.postgres.conenctions_idle")
     def get_connections_idle(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE current_query=\'<IDLE>\';"
-        value = self._single_value_stat(request, sql_stmt, "%s idle conns", "idle")
+        value = self._single_value_stat(request, sql_stmt)
         if value is None:
             return nagios.Result(request.type,nagios.Status.CRITICAL,
                                 "failed to check postgres. check arguments and try again.")
@@ -56,7 +56,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         r.add_performance_data("idle", value, warn=request.warn, crit=request.crit)
         return r
 
-    def _single_value_stat(self, request, sql_stmt, msg_pattern, pfname):
+    def _single_value_stat(self, request, sql_stmt):
         rows = self.run_sql(sql_stmt, request)
         value = None
         if len(rows) > 0 or len(rows[0]) > 0:
@@ -270,22 +270,28 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         self.save_status(request)
         return value, sub_stats
 
-    def run_sql(self, sql_stmt, request=None):
-        cmd_template = "psql -Atc \"%s\""
-        if request:
-            if hasattr(request, "user") and request.user is not None:
-                cmd_template = "sudo -u %s " % request.user + cmd_template
-            if hasattr(request, "password") and request.password is not None:
-                cmd_template += " -p %s" % request.password
+    def run_sql(self, sql_stmt, request):
+        cmd_template = "psql"
+        if hasattr(request, "user") and request.user is not None:
+            cmd_template = "sudo -u %s " % request.user + cmd_template
+        if hasattr(request, "password") and request.password is not None:
+            cmd_template += " -p %s" % request.password
+        cmd_template += " -Atc \"%s\""
         cmd = cmd_template % sql_stmt
         output = commands.getoutput(cmd)
+        if self.validate_output(output):
+            return [tuple(row.split('|')) for row in output.split("\n")]
+        else:
+            return []
+
+    def validate_output(self, output):
         if "command not found" in output:
-            return []
-        elif "FATAL:  role \"root\" does not exist" in output:
-            return []
+            return False
+        elif "FATAL:  role" in output and "does not exist" in output:
+            return False
         elif output.strip() == "":
-            return []
-        return [tuple(row.split('|')) for row in output.split("\n")]
+            return False
+        return True
 
 if __name__ == "__main__":
     import sys

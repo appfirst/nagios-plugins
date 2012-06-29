@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Created on May 31, 2012
 
@@ -32,16 +32,14 @@ class RedisChecker(nagios.BatchStatusPlugin):
                     stats[k] = v
         return stats
 
-    @plugin.command("CURRENT_OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.redis.current_operations_rate")
+    @plugin.command("CURRENT_OPERATIONS", nagios.BatchStatusPlugin.cumulative)
+    @statsd.gauge("sys.app.redis.current_operations")
     def get_current_operations_rate(self, request):
         # current
-        queries = self.get_delta_value("total_commands_processed")
-        sec = self.get_delta_value("uptime_in_seconds")
-        value = queries / sec
+        value = self.get_delta_value("total_commands_processed")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s commands per second' % value);
-        r.add_performance_data('current_rate', value, warn=request.warn, crit=request.crit)
+        r = nagios.Result(request.type, status_code, '%s commands' % value);
+        r.add_performance_data('current_commands', value, warn=request.warn, crit=request.crit)
         return r
 
     @plugin.command("AVERAGE_OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)
