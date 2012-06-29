@@ -17,8 +17,11 @@ class TestRedisChecker(TestPlugin):
         self.checker = RedisChecker()
         print 'check_redis'
 
-    def test_get_operations_rate(self):
-        self.assert_status("-t OPERATIONS_RATE")
+    def test_get_average_operations_rate(self):
+        self.assert_status("-t AVERAGE_OPERATIONS_RATE")
+
+    def test_get_current_operations_rate(self):
+        self.assert_status("-t CURRENT_OPERATIONS_RATE")
 
     def test_get_memory_used(self):
         self.assert_status("-t MEMORY_USED")
