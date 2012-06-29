@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 Created on Jun 22, 2012
 
@@ -13,7 +14,11 @@ from datetime import timedelta
 class MongoDBChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MongoDBChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='mongostat', type=str, required=False);
+        self.parser.add_argument("-f", "--filename", default='mongo', type=str, required=False)
+        self.parser.add_argument("-u", "--user", required=False, type=str)
+        self.parser.add_argument("-s", "--password", required=False, type=str)
+        self.parser.add_argument("-H", "--host", required=False, type=str)
+        self.parser.add_argument("-p", "--port", required=False, type=int)
 
     def retrieve_current_status(self, request):
         cmd = "mongostat -n 1 --noheaders"
@@ -49,77 +54,95 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
                         stats[k] = v
         return stats
 
-    @plugin.command("CONNECTIONS", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("CONNECTIONS")
     @statsd.gauge("sys.app.mongodb.connections")
     def get_connections(self, request):
-        value = self.get_delta_value("conn")
+        cmd = "db.serverStatus().connections.current"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s new connections' % value);
         r.add_performance_data('conns', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("MEMORY_USED", nagios.BatchStatusPlugin.status)
+    @plugin.command("MEMORY_USED")
     @statsd.gauge("sys.app.mongodb.memory_used")
     def get_memory_used(self, request):
-        value = self.stats["res"]
+        cmd = "db.serverStatus().mem.resident"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%sMB resident size' % value);
         r.add_performance_data('res', value, UOM='MB', warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("INSERT_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.mongodb.insert_rate")
-    def get_insert_rate(self, request):
-        queries = self.get_delta_value("insert")
-        sec = self.get_delta_value("time")
-        value = queries / sec
+    @plugin.command("INSERT")
+    @statsd.counter("sys.app.mongodb.insert")
+    def get_insert(self, request):
+        cmd = "db.serverStatus().opcounters.insert"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s inserts per sec' % value);
-        r.add_performance_data('rate', value, warn=request.warn, crit=request.crit)
+        r = nagios.Result(request.type, status_code, '%s inserts' % value);
+        r.add_performance_data('inserts', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("UPDATE_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.mongodb.update_rate")
-    def get_update_rate(self, request):
-        queries = self.get_delta_value("update")
-        sec = self.get_delta_value("time")
-        value = queries / sec
+    @plugin.command("UPDATE")
+    @statsd.counter("sys.app.mongodb.update")
+    def get_update(self, request):
+        cmd = "db.serverStatus().opcounters.update"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s updates per sec' % value);
-        r.add_performance_data('rate', value, warn=request.warn, crit=request.crit)
+        r = nagios.Result(request.type, status_code, '%s updates' % value);
+        r.add_performance_data('updates', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("COMMAND_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.mongodb.command_rate")
-    def get_command_rate(self, request):
-        queries = self.get_delta_value("command")
-        sec = self.get_delta_value("time")
-        value = queries / sec
+    @plugin.command("COMMAND")
+    @statsd.counter("sys.app.mongodb.command")
+    def get_command(self, request):
+        cmd = "db.serverStatus().opcounters.command"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s commands per sec' % value);
-        r.add_performance_data('rate', value, warn=request.warn, crit=request.crit)
+        r = nagios.Result(request.type, status_code, '%s commands' % value);
+        r.add_performance_data('commands', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("QUERY_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.mongodb.query_rate")
-    def get_query_rate(self, request):
-        queries = self.get_delta_value("query")
-        sec = self.get_delta_value("time")
-        value = queries / sec
+    @plugin.command("QUERY")
+    @statsd.counter("sys.app.mongodb.query")
+    def get_query(self, request):
+        cmd = "db.serverStatus().opcounters.query"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s queries per sec' % value);
-        r.add_performance_data('rate', value, warn=request.warn, crit=request.crit)
+        r = nagios.Result(request.type, status_code, '%s queries' % value);
+        r.add_performance_data('queries', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("DELETE_RATE", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.mongodb.delete_rate")
+    @plugin.command("DELETE")
+    @statsd.counter("sys.app.mongodb.delete")
     def get_delete_rate(self, request):
-        queries = self.get_delta_value("delete")
-        sec = self.get_delta_value("time")
-        value = queries / sec
+        cmd = "db.serverStatus().opcounters.delete"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s deletes per sec' % value);
-        r.add_performance_data('rate', value, warn=request.warn, crit=request.crit)
+        r = nagios.Result(request.type, status_code, '%s deletes' % value);
+        r.add_performance_data('deletes', value, warn=request.warn, crit=request.crit)
         return r
 
     @plugin.command("LOCKED_PERCENTAGE", nagios.BatchStatusPlugin.status)
@@ -131,14 +154,110 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('ratio', value, UOM="%", warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("MISS_PERCENTAGE", nagios.BatchStatusPlugin.status)
+    @plugin.command("MISS_RATIO")
     @statsd.gauge("sys.app.mongodb.miss_ratio")
     def get_miss_ratio(self, request):
-        value = self.stats["idx miss %"]
+        cmd = "db.serverStatus().indexCounters.btree.missRatio"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, str(value) + '% missed');
-        r.add_performance_data('ratio', value, UOM="%", warn=request.warn, crit=request.crit)
+        r.add_performance_data('missed', value, UOM="%", warn=request.warn, crit=request.crit)
         return r
+
+    @plugin.command("RESETS")
+    @statsd.counter("sys.app.mongodb.resets")
+    def get_resets(self, request):
+        cmd = "db.serverStatus().indexCounters.btree.resets"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check mongod. check arguments and try again.")
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, str(value) + '% resets');
+        r.add_performance_data('resets', value, UOM="%", warn=request.warn, crit=request.crit)
+        return r
+
+    @plugin.command("HITS")
+    @statsd.counter("sys.app.mongodb.hits")
+    def get_hits(self, request):
+        cmd = "db.serverStatus().indexCounters.btree.hits"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check postgres. check arguments and try again.")
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, str(value) + '% hits');
+        r.add_performance_data('hits', value, UOM="%", warn=request.warn, crit=request.crit)
+        return r
+    
+    @plugin.command("MISSES")
+    @statsd.counter("sys.app.mongodb.misses")
+    def get_misses(self, request):
+        cmd = "db.serverStatus().indexCounters.btree.misses"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check postgres. check arguments and try again.")
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, str(value) + '% misses');
+        r.add_performance_data('misses', value, UOM="%", warn=request.warn, crit=request.crit)
+        return r
+    
+    @plugin.command("ACCESSES")
+    @statsd.counter("sys.app.mongodb.accesses")
+    def get_accesses(self, request):
+        cmd = "db.serverStatus().indexCounters.btree.accesses"
+        value = self._single_value_stat(request, cmd)
+        if value is None:
+            return nagios.Result(request.type,nagios.Status.CRITICAL,
+                                "failed to check postgres. check arguments and try again.")
+        status_code = self.verdict(value, request)
+        r = nagios.Result(request.type, status_code, str(value) + '% accesses');
+        r.add_performance_data('accesses', value, UOM="%", warn=request.warn, crit=request.crit)
+        return r
+
+    def _single_value_stat(self, request, cmd):
+        v = self.run_cmd(cmd, request)
+        if v is not None:
+            try:
+                v = int(v)
+            except ValueError:
+                try:
+                    v = float(v)
+                except ValueError:
+                    pass
+        return v
+
+    def run_cmd(self, cmd, request=None):
+        cmd_template = "mongo --quiet" 
+        if request:
+            if hasattr(request, "user") and request.user is not None:
+                cmd_template += " -u %s " % request.user + cmd_template
+            if hasattr(request, "password") and request.password is not None:
+                cmd_template += " -p %s" % request.password
+            if hasattr(request, "host") and request.host is not None:
+                cmd_template += " --host %s " % request.host + cmd_template
+            if hasattr(request, "port") and request.password is not None:
+                cmd_template += " --port %s" % request.password
+        cmd_template += " --eval \'%s\'"
+        cmd = cmd_template % cmd
+        output = commands.getoutput(cmd)
+        if self.validate_output(output):
+            return output
+        else:
+            return None
+
+    def validate_output(self, output):
+        if "command not found" in output:
+            return False
+        elif "exception: login failed" in output:
+            return False
+        elif output.strip() == "":
+            return False
+        return True
 
 if __name__ == "__main__":
     import sys
