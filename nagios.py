@@ -65,6 +65,8 @@ class Result(object):
             pdline += ';%s' % perfdata["maxv"]
         return pdline
 
+from service_exception import StatusUnknown
+
 class BasePlugin(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser()
@@ -79,7 +81,10 @@ class BasePlugin(object):
 
     def run(self, args):
         self.request = self.parser.parse_args(args)
-        result = self.check(self.request)
+        try:
+            result = self.check(self.request)
+        except StatusUnknown as e:
+            result = e.result
         if result is not None:
             print result
             sys.exit(result.exit_code)
