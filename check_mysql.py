@@ -2,7 +2,7 @@
 '''
 Created on May 29, 2012
 
-@author: yangming
+@author: Yangming
 '''
 import nagios
 from nagios import CommandBasedPlugin as plugin

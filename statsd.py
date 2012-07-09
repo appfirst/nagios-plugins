@@ -1,7 +1,7 @@
 '''
 Created on Jun 14, 2012
 
-@author: appfirst
+@author: Yangming
 '''
 import os, sys
 _rootpath = os.path.dirname(os.path.realpath(__file__))

@@ -2,7 +2,7 @@
 '''
 Created on Jun 7, 2012
 
-@author: yangming
+@author: Yangming
 @copyright: appfirst inc.
 '''
 import nagios

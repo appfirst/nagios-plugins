@@ -1,7 +1,7 @@
 '''
 Created on May 29, 2012
 
-@author: yangming
+@author: Yangming
 '''
 import argparse, sys
 import os, pickle

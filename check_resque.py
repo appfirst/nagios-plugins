@@ -2,7 +2,7 @@
 '''
 Created on May 31, 2012
 
-@author: yangming
+@author: Yangming
 '''
 import nagios
 from nagios import CommandBasedPlugin as plugin
@@ -47,7 +47,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("JOB_PROCESSED")
-    @statsd.gauge("sys.app.resque.job_processed")
+    @statsd.counter("sys.app.resque.job_processed")
     def get_job_processed(self, request):
         cmd = "get resque:stat:processed"
         output = self.run_cmd(cmd, request)
@@ -81,8 +81,6 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         cmd = "%s %s" % (cmd_template, cmd)
         output = commands.getoutput(cmd)
         if "command not found" in output:
-            return None
-        elif "FATAL:  role \"root\" does not exist" in output:
             return None
         elif output.strip() == "":
             return None

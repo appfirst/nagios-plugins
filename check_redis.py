@@ -2,7 +2,7 @@
 '''
 Created on May 31, 2012
 
-@author: yangming
+@author: Yangming
 '''
 import re
 import nagios
@@ -33,7 +33,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return stats
 
     @plugin.command("CURRENT_OPERATIONS", nagios.BatchStatusPlugin.cumulative)
-    @statsd.gauge("sys.app.redis.current_operations")
+    @statsd.counter("sys.app.redis.current_operations")
     def get_current_operations_rate(self, request):
         # current
         value = self.get_delta_value("total_commands_processed")
