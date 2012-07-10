@@ -6,6 +6,9 @@ Created on May 29, 2012
 import argparse, sys
 import os, pickle
 
+def BtoMB(bs):
+    return bs / (1024 * 1024)
+
 class Status(object):
     OK = 0
     WARNING = 1
@@ -197,6 +200,8 @@ class BatchStatusPlugin(CommandBasedPlugin):
         return laststats
 
     def save_status(self, request):
+        if not hasattr(self, "laststats"):
+            return
         try:
             fn = os.path.join(request.rootdir, request.filename)
             pickle.dump(self.laststats, open(fn, "w"))

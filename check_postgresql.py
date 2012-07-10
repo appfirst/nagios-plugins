@@ -4,19 +4,19 @@ Created on Jun 14, 2012
 
 @author: Yangming
 '''
-import nagios
-from nagios import CommandBasedPlugin as plugin
 import commands
 import statsd
-from service_exception import StatusUnknown, ServiceInaccessible,\
-    AuthenticationFailed
+import nagios
+from nagios import CommandBasedPlugin as plugin
+from service_exception import StatusUnknown, ServiceInaccessible, AuthenticationFailed,\
+    OutputFormatError
 
 class PostgresChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PostgresChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='psql', type=str, required=False)
-        self.parser.add_argument("-u", "--user", required=False, type=str)
-        self.parser.add_argument("-p", "--password", required=False, type=str)
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='stats_psql')
+        self.parser.add_argument("-u", "--user",     required=False, type=str)
+        self.parser.add_argument("-P", "--port",     required=False, type=str)
 
     @plugin.command("CONNECTIONS_ACTIVE")
     @statsd.gauge("sys.app.postgres.connections_active")
@@ -24,8 +24,6 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity " \
                    "WHERE waiting=\'f\' AND current_query<>\'<IDLE>\'"
         value = self._single_value_stat(request, sql_stmt)
-        if value is None:
-            raise StatusUnknown(request.type)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, "%s active conns" % value);
         r.add_performance_data("active", value, warn=request.warn, crit=request.crit)
@@ -36,8 +34,6 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     def get_connections_waiting(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE waiting=\'t\';"
         value = self._single_value_stat(request, sql_stmt)
-        if value is None:
-            raise StatusUnknown(request.type)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, "%s waiting conns" % value);
         r.add_performance_data("waiting", value, warn=request.warn, crit=request.crit)
@@ -48,8 +44,6 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     def get_connections_idle(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE current_query=\'<IDLE>\';"
         value = self._single_value_stat(request, sql_stmt)
-        if value is None:
-            raise StatusUnknown(request.type)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, "%s idle conns" % value);
         r.add_performance_data("idle", value, warn=request.warn, crit=request.crit)
@@ -63,6 +57,8 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                 value = int(rows[0][0])
             except ValueError:
                 pass
+        if value is None:
+            raise StatusUnknown(request.type)
         return value
 
     @plugin.command("DATABASE_SIZE")
@@ -71,14 +67,12 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         sql_stmt = "SELECT datname, pg_database_size(datname) FROM pg_database;"
         stat, sub_stats = self._multi_value_stats(request, sql_stmt)
         # to MB
-        value = float(stat)
-        value /= 1024 * 1024
+        value = nagios.BtoMB(float(stat))
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, 'total dbsize: %sMB' % value);
         r.add_performance_data('total', value, UOM='MB', warn=request.warn, crit=request.crit)
         for k, v in sub_stats.iteritems():
-            v = float(v)
-            v /= 1024 * 1024
+            v = nagios.BtoMB(float(v))
             r.add_performance_data(k, v,  warn=request.warn, crit=request.crit)
         return r
 
@@ -150,8 +144,6 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         stat = 0
         sub_stats = {}
         rows = self.run_sql(sql_stmt, request)
-        #if len(rows) == 0:
-        #    return 0, sub_stats
         for substatname, value in rows:
             try:
                 value = int(value)
@@ -220,22 +212,22 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         self.laststats = self.retrieve_last_status(request)
         last_sub_stats = self.laststats.setdefault(statkey, [])
         self.laststats[statkey] = sub_stats
+        self.save_status(request)
 
         if len(last_sub_stats):
             last_value = reduce(lambda x,y:x+y, last_sub_stats.itervalues())
             value -= last_value
             for database in sub_stats:
                 sub_stats[database] -= last_sub_stats.setdefault(database, 0)
-        self.save_status(request)
         return value, sub_stats
 
     def run_sql(self, sql_stmt, request):
         cmd_template = "psql"
-        if hasattr(request, "user") and request.user is not None:
+        if request.user is not None:
             cmd_template = "sudo -u %s " % request.user + cmd_template
-        if hasattr(request, "password") and request.password is not None:
-            cmd_template += " -p %s" % request.password
-        cmd_template += " -Atc \"%s\""
+        if request.port is not None:
+            cmd_template += " -p %s" % request.port
+        cmd_template += " -wAtc \"%s\""
         cmd = cmd_template % sql_stmt
         output = commands.getoutput(cmd)
         if self.validate_output(request, output):
@@ -244,12 +236,14 @@ class PostgresChecker(nagios.BatchStatusPlugin):
             return []
 
     def validate_output(self, request, output):
-        if "command not found" in output:
+        if "command not found" in output or\
+            "psql: could not connect to server" in output:
             raise ServiceInaccessible(request, output)
-        elif "psql: could not connect to server" in output:
-            raise ServiceInaccessible(request, output)
-        elif "FATAL:  role" in output and "does not exist" in output:
+        elif ("psql: FATAL:  role" in output and "does not exist" in output) or\
+              "psql: fe_sendauth: no password supplied" in output:
             raise AuthenticationFailed(request, output)
+        elif "psql:" in output:
+            raise OutputFormatError(request, output)
         elif output.strip() == "":
             return False
         return True
