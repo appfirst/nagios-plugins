@@ -14,7 +14,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         super(ResqueChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", default='resque_redis-cli', type=str, required=False);
         self.parser.add_argument("-u", "--user", required=False, type=str);
-        self.parser.add_argument("-a", "--password", required=False, type=str);
+        self.parser.add_argument("-s", "--password", required=False, type=str);
         self.parser.add_argument("-H", "--host", required=False, type=str);
         self.parser.add_argument("-p", "--port", required=False, type=str);
         self.parser.add_argument("-n", "--database", required=False, type=int);
@@ -55,10 +55,10 @@ class ResqueChecker(nagios.BatchStatusPlugin):
             delta = 0
         else:
             value = int(output)
-            self.laststats = self.retrieve_last_status(request)
-            delta = value - self.laststats.setdefault("processed", 0)
-            self.laststats["processed"] = value
-            self.save_status(request)
+            laststats = self.retrieve_last_status(request)
+            delta = value - laststats.setdefault("processed", 0)
+            laststats["processed"] = value
+            self.save_status(request, laststats)
 
         status_code = self.verdict(delta, request)
         r = nagios.Result(request.type, status_code, '%s job processed' % delta);

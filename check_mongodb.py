@@ -4,12 +4,12 @@ Created on Jun 22, 2012
 
 @author: Yangming
 '''
+import datetime
 import re
-import nagios
-from nagios import CommandBasedPlugin as plugin
 import commands
+import nagios
 import statsd
-from datetime import timedelta
+from nagios import CommandBasedPlugin as plugin
 
 class MongoDBChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
@@ -20,12 +20,10 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-H", "--host", required=False, type=str)
         self.parser.add_argument("-p", "--port", required=False, type=int)
 
-    def retrieve_current_status(self, request):
+    def retrieve_current_status(self, attr, request):
         cmd = "mongostat -n 1 --noheaders"
-        stats = {}
         output = commands.getoutput(cmd)
-        if "command not found" in output or "ERROR" in output:
-            return stats
+        self.validate_output(request, output)
         fields = output.split('\n')[1].strip().split()
         headers = ["insert",     "query",   "update",  "delete",
                    "getmore",    "command", "flushes", "mapped",
@@ -33,26 +31,27 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
                    "idx miss %", "qr|qw",   "ar|aw",   "netIn",
                    "netOut",     "conn",    "time"]
         for k, v in zip(headers, fields):
-            if k == "time":
-                uptime = [int(t) for t in v.split(":")]
-                sec = timedelta(hours=uptime[0],
-                              minutes=uptime[1],
-                              seconds=uptime[2]).total_seconds()
-                stats[k] = sec
-            elif k == "res":
-                pattern = re.compile('(\d+)m')
-                matchResult = pattern.match(v)
-                value = int(matchResult.groups(1)[0])
-                stats[k] = value
-            else:
-                try:
-                    stats[k] = int(v)
-                except ValueError:
+            if k == attr:
+                if k == "time":
+                    uptime = [int(t) for t in v.split(":")]
+                    sec = datetime.timedelta(hours=uptime[0],
+                                  minutes=uptime[1],
+                                  seconds=uptime[2]).total_seconds()
+                    return sec
+                elif k == "res":
+                    pattern = re.compile('(\d+)m')
+                    matchResult = pattern.match(v)
+                    value = int(matchResult.groups(1)[0])
+                    return value
+                else:
                     try:
-                        stats[k] = float(v)
+                        return int(v)
                     except ValueError:
-                        stats[k] = v
-        return stats
+                        try:
+                            return float(v)
+                        except ValueError:
+                            raise nagios.OutputFormatError(request, output)
+        raise nagios.StatusUnknownError(request, output)
 
     @plugin.command("CONNECTIONS")
     @statsd.gauge("sys.app.mongodb.connections")
@@ -145,10 +144,10 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('deletes', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("LOCKED_PERCENTAGE", nagios.BatchStatusPlugin.status)
+    @plugin.command("LOCKED_PERCENTAGE")
     @statsd.gauge("sys.app.mongodb.locked_ratio")
     def get_locked_ratio(self, request):
-        value = self.stats["locked %"]
+        value = self.retrieve_current_status("locked %", request)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, str(value) + '% locked');
         r.add_performance_data('ratio', value, UOM="%", warn=request.warn, crit=request.crit)
@@ -228,35 +227,34 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
                 try:
                     v = float(v)
                 except ValueError:
-                    pass
+                    raise nagios.OutputFormatError(request, v)
         return v
 
-    def run_cmd(self, cmd, request=None):
+    def run_cmd(self, cmd, request):
         cmd_template = "mongo --quiet" 
-        if request:
-            if hasattr(request, "user") and request.user is not None:
-                cmd_template += " -u %s " % request.user + cmd_template
-            if hasattr(request, "password") and request.password is not None:
-                cmd_template += " -p %s" % request.password
-            if hasattr(request, "host") and request.host is not None:
-                cmd_template += " --host %s " % request.host + cmd_template
-            if hasattr(request, "port") and request.password is not None:
-                cmd_template += " --port %s" % request.password
+        if hasattr(request, "user") and request.user is not None:
+            cmd_template += " -u %s " % request.user + cmd_template
+        if hasattr(request, "password") and request.password is not None:
+            cmd_template += " -p %s" % request.password
+        if hasattr(request, "host") and request.host is not None:
+            cmd_template += " --host %s " % request.host + cmd_template
+        if hasattr(request, "port") and request.host is not None:
+            cmd_template += " --port %s" % request.port
         cmd_template += " --eval \'%s\'"
         cmd = cmd_template % cmd
         output = commands.getoutput(cmd)
-        if self.validate_output(output):
+        if self.validate_output(request, output):
             return output
-        else:
-            return None
 
-    def validate_output(self, output):
+    def validate_output(self, request, output):
         if "command not found" in output:
-            return False
+            raise nagios.ServiceInaccessibleError(request, output)
+        elif "Error: couldn't connect to server" in output:
+            raise nagios.ServiceInaccessibleError(request, output)
         elif "exception: login failed" in output:
-            return False
-        elif output.strip() == "":
-            return False
+            raise nagios.AuthenticationFailedError(request, output)
+        elif "ERROR" in output or output.strip() == "":
+            raise nagios.StatusUnknownError(request)
         return True
 
 if __name__ == "__main__":

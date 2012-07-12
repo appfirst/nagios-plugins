@@ -16,48 +16,49 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-u", "--user", required=False, type=str);
         self.parser.add_argument("-p", "--password", required=False, type=str);
 
-    def retrieve_current_status(self, request):
-        stats = {}
+    def retrieve_current_status(self, attr, request):
         cmd = "mysqladmin"
         if hasattr(request, "user") and request.user is not None:
             cmd += " --user=%s" % request.user
         if hasattr(request, "password") and request.password is not None:
             cmd += " --password=%s" % request.password
         cmd += " extended-status"
-        for l in commands.getoutput(cmd).split('\n')[3:-1]:
+        output = commands.getoutput(cmd)
+        for l in output.split('\n')[3:-1]:
             fields = l.split('|')[1:3]
             k = fields[0].strip()
             v = fields[1].strip()
-            try:
-                stats[k] = int(v)
-            except ValueError:
+            if k == attr:
                 try:
-                    stats[k] = float(v)
+                    return int(v)
                 except ValueError:
-                    stats[k] = v
-        return stats
+                    try:
+                        return float(v)
+                    except ValueError:
+                        raise nagios.OutputFormatError(request, output)
+        raise nagios.StatusUnknownError(request, output)
 
-    @plugin.command("QUERIES_PER_SECOND", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("QUERIES_PER_SECOND")
     @statsd.gauge("sys.app.mysql.query_per_sec")
     def get_queries_per_second(self, request):
-        queries = self.get_delta_value("Queries")
-        sec = self.get_delta_value("Uptime")
+        queries = self.get_delta_value(request,"Queries")
+        sec = self.get_delta_value(request,"Uptime")
         value = float(queries) / sec
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s queries per second' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("SLOW_QUERIES", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("SLOW_QUERIES")
     @statsd.counter("sys.app.mysql.slow_queries")
     def get_slow_queries(self, request):
-        value = self.get_delta_value("Slow_queries")
+        value = self.get_delta_value(request,"Slow_queries")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s slow queries' % value);
         r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("ROW_OPERATIONS", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("ROW_OPERATIONS")
     @statsd.counter("sys.app.mysql.row_operations")
     def get_row_opertions(self, request):
         # read data from command line, calculate and verdict
@@ -67,7 +68,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(attr)
+            v = self.get_delta_value(request,attr)
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -85,7 +86,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('rows_read',    values[3], warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("TRANSACTIONS", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("TRANSACTIONS")
     @statsd.counter("sys.app.mysql.transactions")
     def get_transactions(self, request):
         # read data from command line, calculate and verdict
@@ -94,7 +95,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(attr)
+            v = self.get_delta_value(request,attr)
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -116,16 +117,16 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
 
-    @plugin.command("CONNECTIONS", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("CONNECTIONS")
     @statsd.counter("sys.app.mysql.connections")
     def get_connections(self, request):
-        value = self.get_delta_value("Connections")
+        value = self.get_delta_value(request,"Connections")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s new connections' % value);
         r.add_performance_data('conns', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("TOTAL_BYTES", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("TOTAL_BYTES")
     @statsd.counter("sys.app.mysql.total_bytes")
     def get_bytes_transfer(self, request):
         service = request.type
@@ -135,7 +136,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = float(self.get_delta_value(attr)) / 1024 /1024
+            v = float(self.get_delta_value(request,attr)) / 1024 /1024
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -151,7 +152,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_sent', values[1], 'MB', warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("SELECTS", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("SELECTS")
     @statsd.counter("sys.app.mysql.selects")
     def get_select_stats(self, request):
         # read data from command line, calculate and verdict
@@ -161,7 +162,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(attr)
+            v = self.get_delta_value(request,attr)
             values.append(v)
             total += v
             sc = self.verdict(v, request)

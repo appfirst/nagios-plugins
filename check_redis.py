@@ -5,49 +5,51 @@ Created on May 31, 2012
 @author: Yangming
 '''
 import re
-import nagios
-from nagios import CommandBasedPlugin as plugin
 import commands
 import statsd
+import nagios
+from nagios import CommandBasedPlugin as plugin
 
 class RedisChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(RedisChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", default='redis-cli_info', type=str, required=False);
 
-    def retrieve_current_status(self, request):
-        stats = {}
+    def retrieve_current_status(self, attr, request):
+        value = None
         cmd = "redis-cli info"
         output = commands.getoutput(cmd)
         if "command not found" in output:
-            return stats
+            raise nagios.ServiceInaccessibleError(request, output)
         for l in output.split('\r\n'):
             k, v = l.split(':')
-            try:
-                stats[k] = int(v)
-            except ValueError:
+            if attr == k:
                 try:
-                    stats[k] = float(v)
+                    value = int(v)
                 except ValueError:
-                    stats[k] = v
-        return stats
+                    try:
+                        value = float(v)
+                    except ValueError:
+                        raise nagios.OutputFormatError(request, output)
+                return value
+        raise nagios.StatusUnknownError(request, output)
 
-    @plugin.command("CURRENT_OPERATIONS", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("CURRENT_OPERATIONS")
     @statsd.counter("sys.app.redis.current_operations")
     def get_current_operations_rate(self, request):
         # current
-        value = self.get_delta_value("total_commands_processed")
+        value = self.get_delta_value(request, "total_commands_processed")
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s commands' % value);
         r.add_performance_data('current_commands', value, warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("AVERAGE_OPERATIONS_RATE", nagios.BatchStatusPlugin.cumulative)
+    @plugin.command("AVERAGE_OPERATIONS_RATE")
     @statsd.gauge("sys.app.redis.average_operations_rate")
     def get_average_operations_rate(self, request):
         # average
-        queries = self.stats["total_commands_processed"]
-        sec = self.stats["uptime_in_seconds"]
+        queries = self.retrieve_current_status("total_commands_processed", request)
+        sec = self.retrieve_current_status("uptime_in_seconds", request)
         value = queries / sec
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s commands per second' % value);
@@ -60,19 +62,20 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return nagios.Result(request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
 
-    @plugin.command("MEMORY_USED", nagios.BatchStatusPlugin.status)
+    @plugin.command("MEMORY_USED")
     @statsd.gauge("sys.app.redis.memory_used")
     def get_memory_used(self, request):
-        value = float(self.stats["used_memory"]) / 1024 / 1024
+        stats = self.retrieve_current_status("used_memory", request)
+        value = float(stats) / 1024 / 1024
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, "%sMB used_memory" % value);
         r.add_performance_data("used_memory", value, "MB", warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("CHANGES_SINCE_LAST_SAVE", nagios.BatchStatusPlugin.status)
+    @plugin.command("CHANGES_SINCE_LAST_SAVE")
     @statsd.gauge("sys.app.redis.changes_since_last_save")
     def get_changes_since_last_save(self, request):
-        value = self.stats["changes_since_last_save"]
+        value = self.retrieve_current_status("changes_since_last_save", request)
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, "%s changes since last save" % value);
         r.add_performance_data("changes", value, warn=request.warn, crit=request.crit)
@@ -86,8 +89,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         dbsize_pattern = re.compile(".*?(\d+)")
         matchResult = dbsize_pattern.match(output)
         if not matchResult:
-            return nagios.Result(request.type,nagios.Status.CRITICAL,
-                                 "failed to check redis. check arguments and try again.")
+            raise nagios.OutputFormatError(request, output)
         value = int(matchResult.groups(1)[0])
         status_code = self.verdict(value, request)
         r = nagios.Result(request.type, status_code, '%s total keys' % value);

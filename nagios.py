@@ -3,8 +3,9 @@ Created on May 29, 2012
 
 @author: Yangming
 '''
-import argparse, sys
-import os, pickle
+from abc import ABCMeta, abstractmethod
+import argparse, sys, os, pickle
+from exceptions import Exception
 
 def BtoMB(bs):
     return bs / (1024 * 1024)
@@ -68,9 +69,45 @@ class Result(object):
             pdline += ';%s' % perfdata["maxv"]
         return pdline
 
-from service_exception import StatusUnknown
+class StatusUnknownError(Exception):
+    def __init__(self, request, msg="failed to check status. check arguments and try again."):
+        self.status_type = request.type
+        self.status = Status.UNKNOWN
+        self.msg = msg
+
+    def __str__(self):
+        return str(self.msg)
+
+    @property
+    def result(self):
+        return Result(self.status_type, self.status, str(self))
+
+class MultipleInstancesError(StatusUnknownError):
+    def __init__(self, request, msg="multiple instances found, specific the one you need."):
+        self.status_type = request.type
+        self.status = Status.UNKNOWN
+        self.msg = msg
+
+class ServiceInaccessibleError(StatusUnknownError):
+    def __init__(self, request, msg="service is not accessible."):
+        self.status_type = request.type
+        self.status = Status.CRITICAL
+        self.msg = msg
+
+class AuthenticationFailedError(StatusUnknownError):
+    def __init__(self, request, msg="authentication failed. please specific user and password"):
+        self.status_type = request.type
+        self.status = Status.UNKNOWN
+        self.msg = msg
+
+class OutputFormatError(StatusUnknownError):
+    def __init__(self, request, msg="output format is not as expected."):
+        self.status_type = request.type
+        self.status = Status.UNKNOWN
+        self.msg = msg
 
 class BasePlugin(object):
+    __metaclass__ = ABCMeta
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         self._default_argument()
@@ -86,13 +123,14 @@ class BasePlugin(object):
         self.request = self.parser.parse_args(args)
         try:
             result = self.check(self.request)
-        except StatusUnknown as e:
+        except StatusUnknownError as e:
             result = e.result
         if result is not None:
             print result
             sys.exit(result.exit_code)
         sys.exit(Status.to_exit_code(Status.UNKNOWN))
 
+    @abstractmethod
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
@@ -114,6 +152,7 @@ class BasePlugin(object):
         return status_code
 
 class CommandBasedPlugin(BasePlugin):
+    __metaclass__ = ABCMeta
     def __init__(self, *args, **kwargs):
         super(CommandBasedPlugin, self).__init__(*args, **kwargs)
         if hasattr(self.__class__, "method2commands"):
@@ -154,34 +193,11 @@ class CommandBasedPlugin(BasePlugin):
         return add_command
 
 class BatchStatusPlugin(CommandBasedPlugin):
+    __metaclass__ = ABCMeta
     def __init__(self, *args, **kwargs):
         super(BatchStatusPlugin, self).__init__(*args, **kwargs)
         self.parser.add_argument("-d", "--rootdir", required=False,
                                  default='/tmp/', type=str);
-
-    @staticmethod
-    def cumulative(method):
-        def cumulative_command(self, request):
-            self.stats = self.retrieve_current_status(request)
-            if len(self.stats) == 0:
-                return Result(request.type, Status.CRITICAL,
-                                     "cannot get service status.")
-            self.laststats = self.retrieve_last_status(request)
-            result = method(self, request)
-            self.save_status(request)
-            return result
-        return cumulative_command
-
-    @staticmethod
-    def status(method):
-        def status_command(self, request):
-            self.stats = self.retrieve_current_status(request)
-            if len(self.stats) == 0:
-                return Result(request.type, Status.CRITICAL,
-                                     "cannot get service status.")
-            result = method(self, request)
-            return result
-        return status_command
 
     def retrieve_current_status(self, request):
         raise NotImplementedError(
@@ -199,21 +215,23 @@ class BatchStatusPlugin(CommandBasedPlugin):
             pass
         return laststats
 
-    def save_status(self, request):
-        if not hasattr(self, "laststats"):
-            return
+    def save_status(self, request, laststats):
         try:
             fn = os.path.join(request.rootdir, request.filename)
-            pickle.dump(self.laststats, open(fn, "w"))
+            pickle.dump(laststats, open(fn, "w"))
         except pickle.PickleError:
             pass
         except EOFError:
             pass
 
-    def get_delta_value(self, attr):
-        if attr in self.laststats:
-            delta = self.stats[attr] - self.laststats[attr]
+    # TODO request added, change in all references
+    def get_delta_value(self, request, attr):
+        value = self.retrieve_current_status(attr, request)
+        laststats = self.retrieve_last_status(request)
+        if attr in laststats:
+            delta = value - laststats[attr]
         else:
-            delta = self.stats[attr]
-        self.laststats[attr] = self.stats[attr]
+            delta = value
+        laststats[attr] = value
+        self.save_status(request, laststats)
         return delta

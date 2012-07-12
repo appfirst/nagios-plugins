@@ -8,15 +8,13 @@ import commands
 import statsd
 import nagios
 from nagios import CommandBasedPlugin as plugin
-from service_exception import StatusUnknown, ServiceInaccessible, AuthenticationFailed,\
-    OutputFormatError
 
 class PostgresChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PostgresChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='stats_psql')
         self.parser.add_argument("-u", "--user",     required=False, type=str)
-        self.parser.add_argument("-P", "--port",     required=False, type=str)
+        self.parser.add_argument("-p", "--port",     required=False, type=str)
 
     @plugin.command("CONNECTIONS_ACTIVE")
     @statsd.gauge("sys.app.postgres.connections_active")
@@ -51,15 +49,12 @@ class PostgresChecker(nagios.BatchStatusPlugin):
 
     def _single_value_stat(self, request, sql_stmt):
         rows = self.run_sql(sql_stmt, request)
-        value = None
         if len(rows) > 0 or len(rows[0]) > 0:
             try:
-                value = int(rows[0][0])
+                return int(rows[0][0])
             except ValueError:
-                pass
-        if value is None:
-            raise StatusUnknown(request.type)
-        return value
+                raise nagios.OutputFormatError(request, rows)
+        raise nagios.StatusUnknownError(request.type)
 
     @plugin.command("DATABASE_SIZE")
     @statsd.gauge("sys.app.postgres.database_size")
@@ -141,17 +136,15 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return r
 
     def _multi_value_stats(self, request, sql_stmt):
-        stat = 0
         sub_stats = {}
         rows = self.run_sql(sql_stmt, request)
         for substatname, value in rows:
             try:
                 value = int(value)
             except ValueError:
-                pass
+                raise nagios.OutputFormatError(request, rows)
             sub_stats[substatname] = value
-        if len(sub_stats) > 0:
-            stat = reduce(lambda x,y:x+y, sub_stats.itervalues())
+        stat = reduce(lambda x,y:x+y, sub_stats.itervalues(), 0)
         return stat, sub_stats
 
     @plugin.command("TUPLES_READ")
@@ -209,10 +202,10 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     def get_delta_value(self, request, statkey, sql_stmt):
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
 
-        self.laststats = self.retrieve_last_status(request)
-        last_sub_stats = self.laststats.setdefault(statkey, [])
-        self.laststats[statkey] = sub_stats
-        self.save_status(request)
+        laststats = self.retrieve_last_status(request)
+        last_sub_stats = laststats.setdefault(statkey, [])
+        laststats[statkey] = sub_stats
+        self.save_status(request, laststats)
 
         if len(last_sub_stats):
             last_value = reduce(lambda x,y:x+y, last_sub_stats.itervalues())
@@ -236,14 +229,14 @@ class PostgresChecker(nagios.BatchStatusPlugin):
             return []
 
     def validate_output(self, request, output):
-        if "command not found" in output or\
+        if "command not found" in output or \
             "psql: could not connect to server" in output:
-            raise ServiceInaccessible(request, output)
+            raise nagios.ServiceInaccessibleError(request, output)
         elif ("psql: FATAL:  role" in output and "does not exist" in output) or\
               "psql: fe_sendauth: no password supplied" in output:
-            raise AuthenticationFailed(request, output)
+            raise nagios.AuthenticationFailedError(request, output)
         elif "psql:" in output:
-            raise OutputFormatError(request, output)
+            raise nagios.OutputFormatError(request, output)
         elif output.strip() == "":
             return False
         return True

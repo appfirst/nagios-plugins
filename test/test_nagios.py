@@ -9,6 +9,10 @@ import sys
 from StringIO import StringIO
 import mock
 
+class BasePluginMock(nagios.BasePlugin):
+    def check(self, request):
+        pass
+
 class TestBasePlugin(unittest.TestCase):
     def setUp(self):
         self.original_stdout, sys.stdout = sys.stdout, StringIO()
@@ -26,7 +30,7 @@ class TestBasePlugin(unittest.TestCase):
         self.assertEqual(str(r), 'MYSQL_SLOW_QUERIES OK: 2 queries | slow_queries=2;10;20 slow_queries_rate=0.2;0.5;1')
 
     def test_verdict(self):
-        ba = nagios.BasePlugin()
+        ba = BasePluginMock()
         request = mock.Mock()
         request.warn = 6
         request.crit = 8
