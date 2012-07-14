@@ -14,49 +14,57 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         super(MySqlChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", default='mysqladmin_extended-status', type=str, required=False);
         self.parser.add_argument("-u", "--user", required=False, type=str);
-        self.parser.add_argument("-p", "--password", required=False, type=str);
+        self.parser.add_argument("-s", "--password", required=False, type=str);
+        self.parser.add_argument("-H", "--host", required=False, type=str);
+        self.parser.add_argument("-p", "--port", required=False, type=str);
 
-    def retrieve_current_status(self, attr, request):
+    def retrieve_batch_status(self, request):
+        stats = {}
+        output = self._get_batch_status(request)
+        self._validate_output(request, output)
+        stats.update(self._parse_output(request, output))
+        if len(stats) == 0:
+            raise nagios.StatusUnknownError(request, output)
+        return stats
+
+    def _get_batch_status(self, request):
         cmd = "mysqladmin"
         if hasattr(request, "user") and request.user is not None:
             cmd += " --user=%s" % request.user
         if hasattr(request, "password") and request.password is not None:
             cmd += " --password=%s" % request.password
+        if hasattr(request, "host") and request.host is not None:
+            cmd += " --host=%s" % request.host
+        if hasattr(request, "port") and request.port is not None:
+            cmd += " --port=%s" % request.port
         cmd += " extended-status"
-        output = commands.getoutput(cmd)
+        return commands.getoutput(cmd)
+
+    def _parse_output(self, request, output):
         for l in output.split('\n')[3:-1]:
             fields = l.split('|')[1:3]
             k = fields[0].strip()
             v = fields[1].strip()
-            if k == attr:
-                try:
-                    return int(v)
-                except ValueError:
-                    try:
-                        return float(v)
-                    except ValueError:
-                        raise nagios.OutputFormatError(request, output)
-        raise nagios.StatusUnknownError(request, output)
+            value = nagios.to_num(v)
+            if value is not None:
+                yield k, value
+
+    def _validate_output(self, request, output):
+        pass
 
     @plugin.command("QUERIES_PER_SECOND")
     @statsd.gauge("sys.app.mysql.query_per_sec")
     def get_queries_per_second(self, request):
-        queries = self.get_delta_value(request,"Queries")
-        sec = self.get_delta_value(request,"Uptime")
+        queries = self.get_delta_value("Queries", request)
+        sec = self.get_delta_value("Uptime", request)
         value = float(queries) / sec
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s queries per second' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value, '%s queries per second' % value, 'total')
 
     @plugin.command("SLOW_QUERIES")
     @statsd.counter("sys.app.mysql.slow_queries")
     def get_slow_queries(self, request):
-        value = self.get_delta_value(request,"Slow_queries")
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s slow queries' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        return r
+        value = self.get_delta_value("Slow_queries", request)
+        return self.get_result(request, value, '%s slow queries' % value, 'total')
 
     @plugin.command("ROW_OPERATIONS")
     @statsd.counter("sys.app.mysql.row_operations")
@@ -68,7 +76,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(request,attr)
+            v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -95,7 +103,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(request,attr)
+            v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -120,11 +128,8 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     @plugin.command("CONNECTIONS")
     @statsd.counter("sys.app.mysql.connections")
     def get_connections(self, request):
-        value = self.get_delta_value(request,"Connections")
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s new connections' % value);
-        r.add_performance_data('conns', value, warn=request.warn, crit=request.crit)
-        return r
+        value = self.get_delta_value("Connections", request)
+        return self.get_result(request, value, '%s new connections' % value, 'conns')
 
     @plugin.command("TOTAL_BYTES")
     @statsd.counter("sys.app.mysql.total_bytes")
@@ -136,7 +141,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = float(self.get_delta_value(request,attr)) / 1024 /1024
+            v = float(self.get_delta_value(attr, request)) / 1024 /1024
             values.append(v)
             total += v
             sc = self.verdict(v, request)
@@ -162,7 +167,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         total = 0
         status_code = nagios.Status.OK
         for attr in attrs:
-            v = self.get_delta_value(request,attr)
+            v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
             sc = self.verdict(v, request)

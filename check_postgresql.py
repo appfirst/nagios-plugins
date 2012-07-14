@@ -22,39 +22,31 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity " \
                    "WHERE waiting=\'f\' AND current_query<>\'<IDLE>\'"
         value = self._single_value_stat(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, "%s active conns" % value);
-        r.add_performance_data("active", value, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value, '%s active conns' % value, 'active')
 
     @plugin.command("CONNECTIONS_WAITING")
     @statsd.gauge("sys.app.postgres.connections_waiting")
     def get_connections_waiting(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE waiting=\'t\';"
         value = self._single_value_stat(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, "%s waiting conns" % value);
-        r.add_performance_data("waiting", value, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value, '%s waiting conns' % value, 'waiting')
 
     @plugin.command("CONNECTIONS_IDLE")
     @statsd.gauge("sys.app.postgres.conenctions_idle")
     def get_connections_idle(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE current_query=\'<IDLE>\';"
         value = self._single_value_stat(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, "%s idle conns" % value);
-        r.add_performance_data("idle", value, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value, '%s idle conns' % value, 'idle')
 
-    def _single_value_stat(self, request, sql_stmt):
-        rows = self.run_sql(sql_stmt, request)
+    def _single_value_stat(self, request, query):
+        rows = self.run_query(request, query)
         if len(rows) > 0 or len(rows[0]) > 0:
-            try:
-                return int(rows[0][0])
-            except ValueError:
+            value = nagios.to_num(rows[0][0])
+            if value is None:
                 raise nagios.OutputFormatError(request, rows)
-        raise nagios.StatusUnknownError(request.type)
+            return value
+        else:
+            raise nagios.StatusUnknownError(request.type)
 
     @plugin.command("DATABASE_SIZE")
     @statsd.gauge("sys.app.postgres.database_size")
@@ -62,14 +54,11 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         sql_stmt = "SELECT datname, pg_database_size(datname) FROM pg_database;"
         stat, sub_stats = self._multi_value_stats(request, sql_stmt)
         # to MB
-        value = nagios.BtoMB(float(stat))
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, 'total dbsize: %sMB' % value);
-        r.add_performance_data('total', value, UOM='MB', warn=request.warn, crit=request.crit)
+        value = nagios.BtoMB(stat)
         for k, v in sub_stats.iteritems():
-            v = nagios.BtoMB(float(v))
-            r.add_performance_data(k, v,  warn=request.warn, crit=request.crit)
-        return r
+            sub_stats[k] = nagios.BtoMB(v)
+        return self.get_result(request, value,
+                    'total dbsize: %sMB' % value, 'total', UOM='MB', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_ACCESS")
     @statsd.gauge("sys.app.postgres.locks_access")
@@ -80,12 +69,8 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                    "GROUP BY mode " \
                    "HAVING mode ILIKE \'%%%s%%\';" % statkey
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s locks access' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value,
+                    '%s locks access' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_ROW")
     @statsd.gauge("sys.app.postgres.locks_row")
@@ -96,12 +81,8 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                    "GROUP BY mode " \
                    "HAVING mode ILIKE \'%%%s%%\';" % statkey
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s locks row' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value,
+                    '%s locks row' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_SHARE")
     @statsd.gauge("sys.app.postgres.locks_share")
@@ -112,12 +93,8 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                    "GROUP BY mode " \
                    "HAVING mode ILIKE \'%%%s%%\';" % statkey
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s locks share' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value,
+                    '%s locks share' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_EXCLUSIVE")
     @statsd.gauge("sys.app.postgres.locks_exclusive")
@@ -128,23 +105,20 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                    "GROUP BY mode " \
                    "HAVING mode ILIKE \'%%%s%%\';" % statkey
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s locks exclusive' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value,
+                    '%s locks exclusive' % value, 'total', sub_perfs=sub_stats.iteritems())
 
-    def _multi_value_stats(self, request, sql_stmt):
+    def _multi_value_stats(self, request, query):
         sub_stats = {}
-        rows = self.run_sql(sql_stmt, request)
+        rows = self.run_query(request, query)
+        print rows
         for substatname, value in rows:
-            try:
-                value = int(value)
-            except ValueError:
+            value = nagios.to_num(value)
+            if value is None:
                 raise nagios.OutputFormatError(request, rows)
             sub_stats[substatname] = value
         stat = reduce(lambda x,y:x+y, sub_stats.itervalues(), 0)
+        print stat, sub_stats
         return stat, sub_stats
 
     @plugin.command("TUPLES_READ")
@@ -152,54 +126,38 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     def get_tuples_read(self, request):
         statkey = "tup_fetched"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuples fetched' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        value, sub_stats = self.get_delta_value(statkey, request, sql_stmt)
+        return self.get_result(request, value,
+                    '%s tuples fetched' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("TUPLES_INSERTED")
     @statsd.counter("sys.app.postgres.tuples_inserted")
     def get_tuples_inserted(self, request):
         statkey = "tup_inserted"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuples inserted' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        value, sub_stats = self.get_delta_value(statkey, request, sql_stmt)
+        return self.get_result(request, value,
+                    '%s tuples inserted' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("TUPLES_UPDATED")
     @statsd.counter("sys.app.postgres.tuples_updated")
     def get_tuples_updated(self, request):
         statkey = "tup_updated"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuples updated' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        value, sub_stats = self.get_delta_value(statkey, request, sql_stmt)
+        return self.get_result(request, value,
+                    '%s tuples updated' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("TUPLES_DELETED")
     @statsd.counter("sys.app.postgres.tuples_deleted")
     def get_tuples_deleted(self, request):
         statkey = "tup_deleted"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
-        value, sub_stats = self.get_delta_value(request, statkey, sql_stmt)
-        status_code = self.verdict(value, request)
-        r = nagios.Result(request.type, status_code, '%s tuples deleted' % value);
-        r.add_performance_data('total', value, warn=request.warn, crit=request.crit)
-        for k, v in sub_stats.iteritems():
-            r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
-        return r
+        value, sub_stats = self.get_delta_value(statkey, request, sql_stmt)
+        return self.get_result(request, value,
+                    '%s tuples deleted' % value, 'total', sub_perfs=sub_stats.iteritems())
 
-    def get_delta_value(self, request, statkey, sql_stmt):
+    def get_delta_value(self, statkey, request, sql_stmt):
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
 
         laststats = self.retrieve_last_status(request)
@@ -214,21 +172,24 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                 sub_stats[database] -= last_sub_stats.setdefault(database, 0)
         return value, sub_stats
 
-    def run_sql(self, sql_stmt, request):
+    def run_query(self, request, query):
+        output = self._get_query_status(query, request)
+        if self._validate_output(request, output):
+            return [tuple(row.split('|')) for row in output.split("\n")]
+        else:
+            return []
+
+    def _get_query_status(self, query, request):
         cmd_template = "psql"
         if request.user is not None:
             cmd_template = "sudo -u %s " % request.user + cmd_template
         if request.port is not None:
             cmd_template += " -p %s" % request.port
         cmd_template += " -wAtc \"%s\""
-        cmd = cmd_template % sql_stmt
-        output = commands.getoutput(cmd)
-        if self.validate_output(request, output):
-            return [tuple(row.split('|')) for row in output.split("\n")]
-        else:
-            return []
+        cmd = cmd_template % query
+        return commands.getoutput(cmd)
 
-    def validate_output(self, request, output):
+    def _validate_output(self, request, output):
         if "command not found" in output or \
             "psql: could not connect to server" in output:
             raise nagios.ServiceInaccessibleError(request, output)

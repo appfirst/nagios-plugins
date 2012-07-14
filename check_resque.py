@@ -23,15 +23,15 @@ class ResqueChecker(nagios.BatchStatusPlugin):
     @statsd.gauge("sys.app.resque.queue_length")
     def get_queue_length(self, request):
         stats = {}
-        cmd = "smembers resque:queues"
-        output = self.run_cmd(cmd, request)
+        query = "smembers resque:queues"
+        output = self.run_query(request, query)
 
         total = 0
         status_code = nagios.Status.OK
-        q_cmd_pattern = "llen resque:queue:%s"
+        query_pattern = "llen resque:queue:%s"
         for q in output.split('\n'):
             if q:
-                v = self.run_cmd(q_cmd_pattern % q, request)
+                v = self.run_query(request, query_pattern % q)
                 stats[q] = int(v)
                 total += stats[q]
                 sc = self.verdict(v, request)
@@ -49,8 +49,8 @@ class ResqueChecker(nagios.BatchStatusPlugin):
     @plugin.command("JOB_PROCESSED")
     @statsd.counter("sys.app.resque.job_processed")
     def get_job_processed(self, request):
-        cmd = "get resque:stat:processed"
-        output = self.run_cmd(cmd, request)
+        query = "get resque:stat:processed"
+        output = self.run_query(request, query)
         if output is None:
             delta = 0
         else:
@@ -65,25 +65,24 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('total', delta, warn=request.warn, crit=request.crit)
         return r
 
-    def run_cmd(self, cmd, request=None):
+    def run_query(self, request, query):
         cmd_template = "redis-cli --raw"
-        if request:
-            if hasattr(request, "user") and request.user is not None:
-                cmd_template = "sudo -u %s " % request.user + cmd_template
-            if hasattr(request, "password") and request.password is not None:
-                cmd_template += " -a %s" % request.password
-            if hasattr(request, "database") and request.database is not None:
-                cmd_template += " -n %s" % request.database
-            if hasattr(request, "host") and request.host is not None:
-                cmd_template += " -h %s" % request.host
-            if hasattr(request, "port") and request.port is not None:
-                cmd_template += " -p %s" % request.port
-        cmd = "%s %s" % (cmd_template, cmd)
+        if request.user is not None:
+            cmd_template = "sudo -u %s " % request.user + cmd_template
+        if request.password is not None:
+            cmd_template += " -a %s" % request.password
+        if request.database is not None:
+            cmd_template += " -n %s" % request.database
+        if request.host is not None:
+            cmd_template += " -h %s" % request.host
+        if request.port is not None:
+            cmd_template += " -p %s" % request.port
+        cmd = "%s %s" % (cmd_template, query)
         output = commands.getoutput(cmd)
         if "command not found" in output:
-            return None
+            raise nagios.ServiceInaccessibleError(request, output)
         elif output.strip() == "":
-            return None
+            raise nagios.ServiceInaccessibleError(request, output)
         return output
 
 if __name__ == "__main__":

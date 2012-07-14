@@ -10,6 +10,15 @@ from exceptions import Exception
 def BtoMB(bs):
     return bs / (1024 * 1024)
 
+def to_num(v):
+    try:
+        return int(v)
+    except ValueError:
+        try:
+            return float(v)
+        except ValueError:
+            return None
+
 class Status(object):
     OK = 0
     WARNING = 1
@@ -70,10 +79,10 @@ class Result(object):
         return pdline
 
 class StatusUnknownError(Exception):
-    def __init__(self, request, msg="failed to check status. check arguments and try again."):
+    def __init__(self, request, msg=None):
         self.status_type = request.type
         self.status = Status.UNKNOWN
-        self.msg = msg
+        self.msg = msg or "failed to check status. check arguments and try again."
 
     def __str__(self):
         return str(self.msg)
@@ -83,28 +92,28 @@ class StatusUnknownError(Exception):
         return Result(self.status_type, self.status, str(self))
 
 class MultipleInstancesError(StatusUnknownError):
-    def __init__(self, request, msg="multiple instances found, specific the one you need."):
+    def __init__(self, request, msg=None):
         self.status_type = request.type
         self.status = Status.UNKNOWN
-        self.msg = msg
+        self.msg = msg or "multiple instances found, specific the one you need."
 
 class ServiceInaccessibleError(StatusUnknownError):
-    def __init__(self, request, msg="service is not accessible."):
+    def __init__(self, request, msg=None):
         self.status_type = request.type
         self.status = Status.CRITICAL
-        self.msg = msg
+        self.msg = msg or "service is not accessible."
 
 class AuthenticationFailedError(StatusUnknownError):
-    def __init__(self, request, msg="authentication failed. please specific user and password"):
+    def __init__(self, request, msg=None):
         self.status_type = request.type
         self.status = Status.UNKNOWN
-        self.msg = msg
+        self.msg = msg or "authentication failed. please specific user and password"
 
 class OutputFormatError(StatusUnknownError):
-    def __init__(self, request, msg="output format is not as expected."):
+    def __init__(self, request, msg=None):
         self.status_type = request.type
         self.status = Status.UNKNOWN
-        self.msg = msg
+        self.msg = msg or "output format is not as expected."
 
 class BasePlugin(object):
     __metaclass__ = ABCMeta
@@ -199,9 +208,14 @@ class BatchStatusPlugin(CommandBasedPlugin):
         self.parser.add_argument("-d", "--rootdir", required=False,
                                  default='/tmp/', type=str);
 
-    def retrieve_current_status(self, request):
-        raise NotImplementedError(
-            'need to override BatchStatusPlugin.retrieve_current_status in subclass')
+    def retrieve_batch_status(self, request):
+        stats = {}
+        output = self._get_batch_status(request)
+        self._validate_output(request, output)
+        stats.update(self._parse_output(request, output))
+        if len(stats) == 0:
+            raise StatusUnknownError(request, output)
+        return stats
 
     def retrieve_last_status(self, request):
         laststats = {}
@@ -224,9 +238,19 @@ class BatchStatusPlugin(CommandBasedPlugin):
         except EOFError:
             pass
 
+    # get the current reading
+    def get_status_value(self, attr, request):
+        if not hasattr(self, "stats") or self.stats is None:
+            self.stats = self.retrieve_batch_status(request)
+        if attr not in self.stats:
+            raise StatusUnknownError(request)
+        else:
+            return self.stats[attr]
+
     # TODO request added, change in all references
-    def get_delta_value(self, request, attr):
-        value = self.retrieve_current_status(attr, request)
+    # get changes since last time
+    def get_delta_value(self, attr, request):
+        value = self.get_status_value(attr, request)
         laststats = self.retrieve_last_status(request)
         if attr in laststats:
             delta = value - laststats[attr]
@@ -235,3 +259,11 @@ class BatchStatusPlugin(CommandBasedPlugin):
         laststats[attr] = value
         self.save_status(request, laststats)
         return delta
+
+    def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
+        status_code = self.verdict(value, request)
+        r = Result(request.type, status_code, message);
+        r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
+        for pfname, pfvalue in sub_perfs:
+            r.add_performance_data(pfname, pfvalue, warn=request.warn, crit=request.crit)
+        return r

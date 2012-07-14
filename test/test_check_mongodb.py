@@ -12,9 +12,6 @@ import unittest
 from test_plugin import TestPlugin
 from check_mongodb import MongoDBChecker
 
-#import nagios
-#nagios.CommandBasedPlugin.commandmap = {}
-
 class TestMongoDBChecker(TestPlugin):
     def setUp(self):
         self.checker = MongoDBChecker()
