@@ -13,7 +13,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MySqlChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", default='mysqladmin_extended-status', type=str, required=False);
-        self.parser.add_argument("-u", "--user", required=False, type=str);
+        self.parser.add_argument("-u", "--user", default='mysql', required=False, type=str);
         self.parser.add_argument("-s", "--password", required=False, type=str);
         self.parser.add_argument("-H", "--host", required=False, type=str);
         self.parser.add_argument("-p", "--port", required=False, type=str);
