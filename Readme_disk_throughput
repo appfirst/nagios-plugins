@@ -1,0 +1,25 @@
+Description:
+   This is a Nagios plugin command, using the nrpe interface, to return information describing 
+   disk throughput.  It displays the amount of time the system is busy with the disk as a percentage
+   of CPU time.  It also displays the average queue time im microseconds.  
+
+Build:
+   % gcc -o disk_throughput disk_throughput.c
+
+Install:
+   Copy the executable disk_throughput to the nagios install dir under libexec
+   Example: 
+          % cp disk_throughput /usr/local/nagios/libexec/.
+
+Configure:
+   Add the following command to the nrpe config file in the nagios install dir 
+   under the etc subdir: /usr/local/nagios/etc/nrpe.cfg.  The -w param is
+   the warning threshold and -c is the critical threshold.  Linux docs say
+   that a system value of 70% is critical.  
+
+   command[disk_throughput]=/usr/local/nagios/libexec/disk_throughput -w 50 -c 70
+
+Start/Enable:
+   Re-start the collector on the system from which disk information is collected
+   Example:
+        % sudo /etc/init.d/afcollector restart
