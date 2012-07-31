@@ -132,7 +132,7 @@ class BasePlugin(object):
         self.request = self.parser.parse_args(args)
         try:
             result = self.check(self.request)
-        except StatusUnknownError as e:
+        except StatusUnknownError, e:
             result = e.result
         if result is not None:
             print result
