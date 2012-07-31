@@ -3,7 +3,6 @@ Created on May 29, 2012
 
 @author: Yangming
 '''
-from abc import ABCMeta, abstractmethod
 import argparse, sys, os, pickle
 from exceptions import Exception
 
@@ -116,7 +115,6 @@ class OutputFormatError(StatusUnknownError):
         self.msg = msg or "output format is not as expected."
 
 class BasePlugin(object):
-    __metaclass__ = ABCMeta
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         self._default_argument()
@@ -139,7 +137,6 @@ class BasePlugin(object):
             sys.exit(result.exit_code)
         sys.exit(Status.to_exit_code(Status.UNKNOWN))
 
-    @abstractmethod
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
@@ -161,7 +158,6 @@ class BasePlugin(object):
         return status_code
 
 class CommandBasedPlugin(BasePlugin):
-    __metaclass__ = ABCMeta
     def __init__(self, *args, **kwargs):
         super(CommandBasedPlugin, self).__init__(*args, **kwargs)
         if hasattr(self.__class__, "method2commands"):
@@ -202,7 +198,6 @@ class CommandBasedPlugin(BasePlugin):
         return add_command
 
 class BatchStatusPlugin(CommandBasedPlugin):
-    __metaclass__ = ABCMeta
     def __init__(self, *args, **kwargs):
         super(BatchStatusPlugin, self).__init__(*args, **kwargs)
         self.parser.add_argument("-d", "--rootdir", required=False,
