@@ -12,9 +12,9 @@ from nagios import CommandBasedPlugin as plugin
 class PostgresChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PostgresChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str, default='stats_psql')
-        self.parser.add_argument("-u", "--user",     required=False, type=str)
-        self.parser.add_argument("-p", "--port",     required=False, type=str)
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@stats_psql')
+        self.parser.add_argument("-u", "--user",     required=False, type=str, default='postgres')
+        self.parser.add_argument("-p", "--port",     required=False, type=int)
 
     @plugin.command("CONNECTIONS_ACTIVE")
     @statsd.gauge("sys.app.postgres.connections_active")
