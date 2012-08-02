@@ -19,11 +19,16 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
     def _get_batch_status(self, request):
         cmd = "echo 'stats' | nc"
         cmd += " %s %s" % (request.host, request.port)
-        output = commands.getoutput(cmd)
-        if output.strip() == "":
-            cmd = "exec 5<>/dev/tcp/%s/%s;echo -e \"stats\nquit\" >&5;cat <&5" % (request.host, request.port)
-            output = commands.getoutput(cmd)
+#        output = commands.getoutput(cmd)
+#        if output.strip() == "":
+        import subprocess
+        cmd = "exec 5<>/dev/tcp/%s/%s;echo -e \"stats\nquit\" >&5;cat <&5" % (request.host, request.port)
+        proc = subprocess.Popen(['bash', '-c', cmd],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE)
+        output, _ = proc.communicate()
         return output
+
 
     def _parse_output(self, request, output):
         for l in output.split('\r\n'):
