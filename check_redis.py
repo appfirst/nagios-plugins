@@ -47,7 +47,6 @@ class RedisChecker(nagios.BatchStatusPlugin):
     def _parse_output(self, request, output):
         for l in output.split('\r\n'):
             k, v = l.split(':')
-            print k, v
             value = nagios.to_num(v)
             if value is not None:
                 yield k, value

@@ -111,14 +111,12 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     def _multi_value_stats(self, request, query):
         sub_stats = {}
         rows = self.run_query(request, query)
-        print rows
         for substatname, value in rows:
             value = nagios.to_num(value)
             if value is None:
                 raise nagios.OutputFormatError(request, rows)
             sub_stats[substatname] = value
         stat = reduce(lambda x,y:x+y, sub_stats.itervalues(), 0)
-        print stat, sub_stats
         return stat, sub_stats
 
     @plugin.command("TUPLES_READ")
