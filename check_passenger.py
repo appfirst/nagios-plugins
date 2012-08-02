@@ -13,18 +13,8 @@ from nagios import CommandBasedPlugin as plugin
 class PassengerChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PassengerChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str,
-                                 default="passenger-status");
-        self.parser.add_argument("-p", "--pid", required=False, type=str);
-
-    def retrieve_batch_status(self, request):
-        stats = {}
-        output = self._get_batch_status(request)
-        self._validate_output(request, output)
-        stats.update(self._parse_output(request, output))
-        if len(stats) == 0:
-            raise nagios.StatusUnknownError(request, output)
-        return stats
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default="pd@passenger-status");
+        self.parser.add_argument("-p", "--pid",      required=False, type=str);
 
     def _get_batch_status(self, request):
         # TODO: make sudo and path optional

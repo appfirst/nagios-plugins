@@ -14,11 +14,11 @@ from nagios import CommandBasedPlugin as plugin
 class MongoDBChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MongoDBChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='mongo', type=str, required=False)
-        self.parser.add_argument("-u", "--user", required=False, type=str)
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@mongo')
+        self.parser.add_argument("-u", "--user",     required=False, type=str)
         self.parser.add_argument("-s", "--password", required=False, type=str)
-        self.parser.add_argument("-H", "--host", required=False, type=str)
-        self.parser.add_argument("-p", "--port", required=False, type=int)
+        self.parser.add_argument("-H", "--host",     required=False, type=str)
+        self.parser.add_argument("-p", "--port",     required=False, type=int)
 
     def _get_batch_status(self, request):
         cmd = "mongostat -n 1 --noheaders"

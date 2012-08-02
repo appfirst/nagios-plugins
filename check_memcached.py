@@ -12,18 +12,9 @@ import statsd
 class MemcachedChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MemcachedChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='memcached_stats', type=str, required=False);
-        self.parser.add_argument("-H", "--host", required=False, type=str, default="localhost");
-        self.parser.add_argument("-p", "--port", required=False, type=str, default="11211");
-
-#    def retrieve_batch_status(self, request):
-#        stats = {}
-#        output = self._get_batch_status(request)
-#        self._validate_output(request, output)
-#        stats.update(self._parse_output(request, output))
-#        if len(stats) == 0:
-#            raise nagios.StatusUnknownError(request, output)
-#        return stats
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@memcached_stats');
+        self.parser.add_argument("-H", "--host",     required=False, type=str, default="localhost");
+        self.parser.add_argument("-p", "--port",     required=False, type=int, default=11211);
 
     def _get_batch_status(self, request):
         cmd = "echo 'stats' | nc"

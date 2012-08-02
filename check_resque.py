@@ -12,11 +12,11 @@ import statsd
 class ResqueChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(ResqueChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='resque_redis-cli', type=str, required=False);
-        self.parser.add_argument("-u", "--user", required=False, type=str);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@resque_redis-cli');
+        self.parser.add_argument("-u", "--user",     required=False, type=str);
         self.parser.add_argument("-s", "--password", required=False, type=str);
-        self.parser.add_argument("-H", "--host", required=False, type=str);
-        self.parser.add_argument("-p", "--port", required=False, type=str);
+        self.parser.add_argument("-H", "--host",     required=False, type=str);
+        self.parser.add_argument("-p", "--port",     required=False, type=int);
         self.parser.add_argument("-n", "--database", required=False, type=int);
 
     @plugin.command("QUEUE_LENGTH")

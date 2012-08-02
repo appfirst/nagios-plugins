@@ -12,20 +12,11 @@ import statsd
 class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MySqlChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", default='mysqladmin_extended-status', type=str, required=False);
-        self.parser.add_argument("-u", "--user", default='mysql', required=False, type=str);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@mysqladmin_extended-status');
+        self.parser.add_argument("-u", "--user",     required=False, type=str, default='mysql');
         self.parser.add_argument("-s", "--password", required=False, type=str);
-        self.parser.add_argument("-H", "--host", required=False, type=str);
-        self.parser.add_argument("-p", "--port", required=False, type=str);
-
-    def retrieve_batch_status(self, request):
-        stats = {}
-        output = self._get_batch_status(request)
-        self._validate_output(request, output)
-        stats.update(self._parse_output(request, output))
-        if len(stats) == 0:
-            raise nagios.StatusUnknownError(request, output)
-        return stats
+        self.parser.add_argument("-H", "--host",     required=False, type=str);
+        self.parser.add_argument("-p", "--port",     required=False, type=int);
 
     def _get_batch_status(self, request):
         cmd = "mysqladmin"
