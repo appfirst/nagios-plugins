@@ -18,7 +18,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-H", "--host",     required=False, type=str)
         self.parser.add_argument("-p", "--port",     required=False, type=int)
         self.parser.add_argument("-n", "--database", required=False, type=int)
-        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='resque')
+        self.parser.add_argument("-z", "--appname",  required=False, type=str, default='resque')
 
     @plugin.command("QUEUE_LENGTH")
     @statsd.gauge

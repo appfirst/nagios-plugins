@@ -18,43 +18,43 @@ class TestMongoDBChecker(TestPlugin):
         print 'check_mongodb'
 
     def test_get_connections(self):
-        self.assert_status("-t CONNECTIONS")
+        self.assert_status("-t CONNECTIONS -z mongodb_test -d ./status/")
 
     def test_get_memory_used(self):
-        self.assert_status("-t MEMORY_USED")
+        self.assert_status("-t MEMORY_USED -z mongodb_test -d ./status/")
 
     def test_get_insert_rate(self):
-        self.assert_status("-t INSERT")
+        self.assert_status("-t INSERT -z mongodb_test -d ./status/")
 
     def test_get_update_rate(self):
-        self.assert_status("-t UPDATE")
+        self.assert_status("-t UPDATE -z mongodb_test -d ./status/")
 
     def test_get_command_rate(self):
-        self.assert_status("-t COMMAND")
+        self.assert_status("-t COMMAND -z mongodb_test -d ./status/")
 
     def test_get_query_rate(self):
-        self.assert_status("-t QUERY")
+        self.assert_status("-t QUERY -z mongodb_test -d ./status/")
 
     def test_get_delete_rate(self):
-        self.assert_status("-t DELETE")
+        self.assert_status("-t DELETE -z mongodb_test -d ./status/")
 
     def test_get_locked_ratio(self):
-        self.assert_status("-t LOCKED_PERCENTAGE")
+        self.assert_status("-t LOCKED_PERCENTAGE -z mongodb_test -d ./status/")
 
     def test_get_miss_ratio(self):
-        self.assert_status("-t MISS_RATIO")
+        self.assert_status("-t MISS_RATIO -z mongodb_test -d ./status/")
 
     def test_get_resets(self):
-        self.assert_status("-t RESETS")
+        self.assert_status("-t RESETS -z mongodb_test -d ./status/")
 
     def test_get_hits(self):
-        self.assert_status("-t HITS")
+        self.assert_status("-t HITS -z mongodb_test -d ./status/")
 
     def test_get_misses(self):
-        self.assert_status("-t MISSES")
+        self.assert_status("-t MISSES -z mongodb_test -d ./status/")
 
     def test_get_accesses(self):
-        self.assert_status("-t ACCESSES")
+        self.assert_status("-t ACCESSES -z mongodb_test -d ./status/")
 
 if __name__ == "__main__":
     unittest.main()

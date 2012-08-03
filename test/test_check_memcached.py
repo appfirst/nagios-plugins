@@ -18,25 +18,25 @@ class TestMemcachedChecker(TestPlugin):
         print 'check_memcached'
 
     def test_get_cmd_set(self):
-        self.assert_status("-t OPERATIONS_SET_REQUESTS")
+        self.assert_status("-t OPERATIONS_SET_REQUESTS -z memcached_test -d ./status/")
 
     def test_get_cmd_get(self):
-        self.assert_status("-t OPERATIONS_GET_REQUESTS")
+        self.assert_status("-t OPERATIONS_GET_REQUESTS -z memcached_test -d ./status/")
 
     def test_get_bytes_read(self):
-        self.assert_status("-t BYTES_READ")
+        self.assert_status("-t BYTES_READ -z memcached_test -d ./status/")
 
     def test_get_bytes_written(self):
-        self.assert_status("-t BYTES_WRITTEN")
+        self.assert_status("-t BYTES_WRITTEN -z memcached_test -d ./status/")
 
     def test_get_bytes_allocated(self):
-        self.assert_status("-t BYTES_ALLOCATED")
+        self.assert_status("-t BYTES_ALLOCATED -z memcached_test -d ./status/")
 
     def test_get_total_items(self):
-        self.assert_status("-t TOTAL_ITEMS")
+        self.assert_status("-t TOTAL_ITEMS -z memcached_test -d ./status/")
 
     def test_get_total_connections(self):
-        self.assert_status("-t TOTAL_CONNECTIONS")
+        self.assert_status("-t CURRENT_CONNECTIONS -z memcached_test -d ./status/")
 
 if __name__ == "__main__":
     unittest.main()

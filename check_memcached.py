@@ -15,7 +15,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@memcached_stats')
         self.parser.add_argument("-H", "--host",     required=False, type=str, default="localhost")
         self.parser.add_argument("-p", "--port",     required=False, type=int, default=11211)
-        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='memcached')
+        self.parser.add_argument("-z", "--appname",  required=False, type=str, default='memcached')
 
     def _get_batch_status(self, request):
         cmd = "echo 'stats' | nc"
@@ -88,7 +88,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
     @plugin.command("CURRENT_CONNECTIONS")
     @statsd.gauge
     def get_total_connections(self, request):
-        value = self.get_status_value("current_connections", request)
+        value = self.get_status_value("curr_connections", request)
         return self.get_result(request, value, '%s current connections' % value, "connections")
 
 if __name__ == "__main__":

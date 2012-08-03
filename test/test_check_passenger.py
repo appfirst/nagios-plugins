@@ -18,13 +18,13 @@ class TestPassengerChecker(TestPlugin):
         print 'check_passenger'
 
     def test_get_max_procs(self):
-        self.assert_status("-t MAX_PROCESSES")
+        self.assert_status("-t MAX_PROCESSES -z passenger_test -d ./status/")
 
     def test_get_procs(self):
-        self.assert_status("-t RUNNING_PROCESSES")
+        self.assert_status("-t RUNNING_PROCESSES -z passenger_test -d ./status/")
 
     def test_get_active_procs(self):
-        self.assert_status("-t ACTIVE_PROCESSES")
+        self.assert_status("-t ACTIVE_PROCESSES -z passenger_test -d ./status/")
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,7 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         super(PassengerChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", required=False, type=str, default="pd@passenger-status")
         self.parser.add_argument("-p", "--pid",      required=False, type=str)
-        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='passenger')
+        self.parser.add_argument("-z", "--appname",  required=False, type=str, default='passenger')
 
     def _get_batch_status(self, request):
         # TODO: make sudo and path optional

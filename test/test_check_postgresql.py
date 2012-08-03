@@ -18,40 +18,40 @@ class TestPostgresChecker(TestPlugin):
         print 'check_postgresql'
 
     def test_get_connections_active(self):
-        self.assert_status("-u postgres -t CONNECTIONS_ACTIVE")
+        self.assert_status("-t CONNECTIONS_ACTIVE -z postgres_test -d ./status/")
 
     def test_get_connections_waiting(self):
-        self.assert_status("-u postgres -t CONNECTIONS_WAITING")
+        self.assert_status("-t CONNECTIONS_WAITING -z postgres_test -d ./status/")
 
     def test_get_conenctions_idle(self):
-        self.assert_status("-u postgres -t CONNECTIONS_IDLE")
+        self.assert_status("-t CONNECTIONS_IDLE -z postgres_test -d ./status/")
 
     def test_get_database_size(self):
-        self.assert_status("-u postgres -t DATABASE_SIZE")
+        self.assert_status("-t DATABASE_SIZE -z postgres_test -d ./status/")
 
     def test_get_locks_access(self):
-        self.assert_status("-u postgres -t LOCKS_ACCESS")
+        self.assert_status("-t LOCKS_ACCESS -z postgres_test -d ./status/")
 
     def test_get_locks_row(self):
-        self.assert_status("-u postgres -t LOCKS_ROW")
+        self.assert_status("-t LOCKS_ROW -z postgres_test -d ./status/")
 
     def test_get_locks_share(self):
-        self.assert_status("-u postgres -t LOCKS_SHARE")
+        self.assert_status("-t LOCKS_SHARE -z postgres_test -d ./status/")
 
     def test_get_locks_exclusive(self):
-        self.assert_status("-u postgres -t LOCKS_EXCLUSIVE")
+        self.assert_status("-t LOCKS_EXCLUSIVE -z postgres_test -d ./status/")
 
     def test_get_tuple_read(self):
-        self.assert_status("-u postgres -t TUPLES_READ")
+        self.assert_status("-t TUPLES_READ -z postgres_test -d ./status/")
 
     def test_get_tuple_inserted(self):
-        self.assert_status("-u postgres -t TUPLES_INSERTED")
+        self.assert_status("-t TUPLES_INSERTED -z postgres_test -d ./status/")
 
     def test_get_tuple_updated(self):
-        self.assert_status("-u postgres -t TUPLES_UPDATED")
+        self.assert_status("-t TUPLES_UPDATED -z postgres_test -d ./status/")
 
     def test_get_tuple_deleted(self):
-        self.assert_status("-u postgres -t TUPLES_DELETED")
+        self.assert_status("-t TUPLES_DELETED -z postgres_test -d ./status/")
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,7 +17,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-s", "--password", required=False, type=str)
         self.parser.add_argument("-H", "--host",     required=False, type=str)
         self.parser.add_argument("-p", "--port",     required=False, type=int)
-        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='mysql')
+        self.parser.add_argument("-z", "--appname",  required=False, type=str, default='mysql')
 
     def _get_batch_status(self, request):
         cmd = "mysqladmin"

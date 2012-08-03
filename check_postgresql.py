@@ -15,7 +15,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@stats_psql')
         self.parser.add_argument("-u", "--user",     required=False, type=str, default='postgres')
         self.parser.add_argument("-p", "--port",     required=False, type=int)
-        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='resque')
+        self.parser.add_argument("-z", "--appname",  required=False, type=str, default='resque')
 
     @plugin.command("CONNECTIONS_ACTIVE")
     @statsd.gauge

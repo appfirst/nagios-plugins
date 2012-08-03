@@ -19,7 +19,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-s", "--password", required=False, type=str)
         self.parser.add_argument("-H", "--host",     required=False, type=str)
         self.parser.add_argument("-p", "--port",     required=False, type=int)
-        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='mongodb')
+        self.parser.add_argument("-z", "--appname",  required=False, type=str, default='mongodb')
 
     def _get_batch_status(self, request):
         cmd = "mongostat -n 1 --noheaders"

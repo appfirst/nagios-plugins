@@ -18,28 +18,28 @@ class TestMySqlChecker(TestPlugin):
         print 'check_mysql'
 
     def test_get_queries_per_second(self):
-        self.assert_status("-t QUERIES_PER_SECOND")
+        self.assert_status("-t QUERIES_PER_SECOND -z mysql_test -d ./status/")
 
     def test_get_slow_queries(self):
-        self.assert_status("-t SLOW_QUERIES")
+        self.assert_status("-t SLOW_QUERIES -z mysql_test -d ./status/")
 
     def test_get_row_opertions(self):
-        self.assert_status("-t ROW_OPERATIONS")
+        self.assert_status("-t ROW_OPERATIONS -z mysql_test -d ./status/")
 
     def test_get_transactions(self):
-        self.assert_status("-t TRANSACTIONS")
+        self.assert_status("-t TRANSACTIONS -z mysql_test -d ./status/")
 
     #def test_get_network_traffic(self, request):
     #    pass
 
     def test_get_connections(self):
-        self.assert_status("-t CONNECTIONS")
+        self.assert_status("-t CONNECTIONS -z mysql_test -d ./status/")
 
     def test_get_bytes_transfer(self):
-        self.assert_status("-t TOTAL_BYTES")
+        self.assert_status("-t TOTAL_BYTES -z mysql_test -d ./status/")
 
     def test_get_select_stats(self):
-        self.assert_status("-t SELECTS")
+        self.assert_status("-t SELECTS -z mysql_test -d ./status/")
 
     #def test_get_replication(self, request):
     #    pass

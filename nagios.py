@@ -201,26 +201,27 @@ class CommandBasedPlugin(BasePlugin):
         return Result(request.appname, request.type, Status.UNKNOWN, "mysterious status")
 
     @classmethod
-    def command(cls, command_str, wrappers=None):
+    def command(cls, command_str):
         if not hasattr(cls, "method2commands"):
             cls.method2commands = {}
-        if wrappers is None:
-            wrappers = []
-        elif type(wrappers) is not list:
-            wrappers = [wrappers]
         def add_command(method):
-            for w in wrappers:
-                method = w(method)
             cls.method2commands[method] = command_str
             return method
         return add_command
 
+
+# convenience skeleton class to provide common methods
+# for querying status in a batch output
 class BatchStatusPlugin(CommandBasedPlugin):
     def __init__(self, *args, **kwargs):
         super(BatchStatusPlugin, self).__init__(*args, **kwargs)
         self.parser.add_argument("-d", "--rootdir", required=False,
                                  default='/tmp/', type=str);
 
+    # a class has to provide
+    #    _get_batch_status(request)
+    #    _validate_output(request, output)
+    # in order to use this convenient function
     def retrieve_batch_status(self, request):
         stats = {}
         output = self._get_batch_status(request)
@@ -230,6 +231,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
             raise StatusUnknownError(request, output)
         return stats
 
+    # read from rootdir/filename and return the laststats
     def retrieve_last_status(self, request):
         laststats = {}
         try:
@@ -242,6 +244,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
             pass
         return laststats
 
+    # dump the status as the laststats for future query
     def save_status(self, request, laststats):
         try:
             fn = os.path.join(request.rootdir, request.filename)
@@ -273,7 +276,9 @@ class BatchStatusPlugin(CommandBasedPlugin):
         self.save_status(request, laststats)
         return delta
 
-    # sub_perfs = [(pfname, pfvalue),...]
+    # convenient method to make a result from request, performance value and message
+    # optionally with some sub_performance value and the Units Of Measurement
+    # sub_perfs = [ (pfname, pfvalue), ... ]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
         status_code = self.verdict(value, request)
         r = Result(request.appname, request.type, status_code, message);

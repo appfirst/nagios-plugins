@@ -18,19 +18,19 @@ class TestRedisChecker(TestPlugin):
         print 'check_redis'
 
     def test_get_average_operations_rate(self):
-        self.assert_status("-t AVERAGE_OPERATIONS_RATE")
+        self.assert_status("-t AVERAGE_OPERATIONS_RATE -z redis_test -d ./status/")
 
     def test_get_current_operations_rate(self):
-        self.assert_status("-t CURRENT_OPERATIONS")
+        self.assert_status("-t CURRENT_OPERATIONS -z redis_test -d ./status/")
 
     def test_get_memory_used(self):
-        self.assert_status("-t MEMORY_USED")
+        self.assert_status("-t MEMORY_USED -z redis_test -d ./status/")
 
     def test_get_change_since_last_save(self):
-        self.assert_status("-t CHANGES_SINCE_LAST_SAVE")
+        self.assert_status("-t CHANGES_SINCE_LAST_SAVE -z redis_test -d ./status/")
 
     def test_get_total_keys(self):
-        self.assert_status("-t TOTAL_KEYS")
+        self.assert_status("-t TOTAL_KEYS -z redis_test -d ./status/")
 
 if __name__ == "__main__":
     unittest.main()

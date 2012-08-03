@@ -18,10 +18,10 @@ class TestResqueChecker(TestPlugin):
         print 'check_resque'
 
     def test_get_connections_active(self):
-        self.assert_status("-t QUEUE_LENGTH")
+        self.assert_status("-t QUEUE_LENGTH -z resque_test -d ./status/")
 
     def test_get_connections_waiting(self):
-        self.assert_status("-t JOB_PROCESSED")
+        self.assert_status("-t JOB_PROCESSED -z resque_test -d ./status/")
 
 
 if __name__ == "__main__":
