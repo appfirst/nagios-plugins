@@ -40,8 +40,9 @@ class Status(object):
         return status_code
 
 class Result(object):
-    def __init__(self, service, status_code, message):
-        self.service = service.upper()
+    def __init__(self, appname, type, status_code, message):
+        self.appname = appname.lower()
+        self.type = type.upper()
         self.status_code = status_code
         self.status = Status.to_status(status_code)
         self.message = message
@@ -55,8 +56,24 @@ class Result(object):
         self.perf_data_list.append(perfdata)
         return self
 
+    def __getitem__(self, key):
+        if key == "appname":
+            return self.appname
+        elif key == "type":
+            return self.type.lower()
+        elif key == "status_code":
+            return self.status_code
+        elif key == "status":
+            return self.status
+        elif key == "message":
+            return self.message
+        elif key == "value":
+            return self.perf_data_list[0]['value']
+        else:
+            raise KeyError(key)
+
     def __str__(self):
-        output = '%s %s: %s' % (self.service, self.status, self.message)
+        output = '%s %s: %s' % (self.type, self.status, self.message)
         if len(self.perf_data_list):
             output += ' |'
         for pd in self.perf_data_list:
@@ -79,6 +96,7 @@ class Result(object):
 
 class StatusUnknownError(Exception):
     def __init__(self, request, msg=None):
+        self.appname = request.appname
         self.status_type = request.type
         self.status = Status.UNKNOWN
         self.msg = msg or "failed to check status. check arguments and try again."
@@ -88,7 +106,7 @@ class StatusUnknownError(Exception):
 
     @property
     def result(self):
-        return Result(self.status_type, self.status, str(self))
+        return Result(self.appname, self.status_type, self.status, str(self))
 
 class MultipleInstancesError(StatusUnknownError):
     def __init__(self, request, msg=None):
@@ -180,7 +198,7 @@ class CommandBasedPlugin(BasePlugin):
             result = self.commands[request.type](self, request)
             if result:
                 return result
-        return Result(request.type, Status.UNKNOWN, "mysterious status")
+        return Result(request.appname, request.type, Status.UNKNOWN, "mysterious status")
 
     @classmethod
     def command(cls, command_str, wrappers=None):
@@ -255,9 +273,10 @@ class BatchStatusPlugin(CommandBasedPlugin):
         self.save_status(request, laststats)
         return delta
 
+    # sub_perfs = [(pfname, pfvalue),...]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
         status_code = self.verdict(value, request)
-        r = Result(request.type, status_code, message);
+        r = Result(request.appname, request.type, status_code, message);
         r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
         for pfname, pfvalue in sub_perfs:
             r.add_performance_data(pfname, pfvalue, warn=request.warn, crit=request.crit)

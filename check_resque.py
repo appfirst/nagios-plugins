@@ -12,15 +12,16 @@ import statsd
 class ResqueChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(ResqueChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@resque_redis-cli');
-        self.parser.add_argument("-u", "--user",     required=False, type=str);
-        self.parser.add_argument("-s", "--password", required=False, type=str);
-        self.parser.add_argument("-H", "--host",     required=False, type=str);
-        self.parser.add_argument("-p", "--port",     required=False, type=int);
-        self.parser.add_argument("-n", "--database", required=False, type=int);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@resque_redis-cli')
+        self.parser.add_argument("-u", "--user",     required=False, type=str)
+        self.parser.add_argument("-s", "--password", required=False, type=str)
+        self.parser.add_argument("-H", "--host",     required=False, type=str)
+        self.parser.add_argument("-p", "--port",     required=False, type=int)
+        self.parser.add_argument("-n", "--database", required=False, type=int)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='resque')
 
     @plugin.command("QUEUE_LENGTH")
-    @statsd.gauge("sys.app.resque.queue_length")
+    @statsd.gauge
     def get_queue_length(self, request):
         stats = {}
         query = "smembers resque:queues"
@@ -40,14 +41,14 @@ class ResqueChecker(nagios.BatchStatusPlugin):
                 elif sc == nagios.Status.CRITICAL:
                     status_code = nagios.Status.CRITICAL
 
-        r = nagios.Result(request.type, status_code, '%s jobs in queues' % total);
+        r = nagios.Result(request.appname, request.type, status_code, '%s jobs in queues' % total);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         for k, v in stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)
         return r
 
     @plugin.command("JOB_PROCESSED")
-    @statsd.counter("sys.app.resque.job_processed")
+    @statsd.counter
     def get_job_processed(self, request):
         query = "get resque:stat:processed"
         output = self.run_query(request, query)
@@ -60,10 +61,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
             laststats["processed"] = value
             self.save_status(request, laststats)
 
-        status_code = self.verdict(delta, request)
-        r = nagios.Result(request.type, status_code, '%s job processed' % delta);
-        r.add_performance_data('total', delta, warn=request.warn, crit=request.crit)
-        return r
+        return self.get_result(request, value, '%s jobs in processed' % delta)
 
     def run_query(self, request, query):
         cmd_template = "redis-cli --raw"

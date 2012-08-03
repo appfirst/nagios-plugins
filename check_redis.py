@@ -13,12 +13,13 @@ from nagios import CommandBasedPlugin as plugin
 class RedisChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(RedisChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@redis-cli_info');
-        self.parser.add_argument("-u", "--user",     required=False, type=str);
-        self.parser.add_argument("-s", "--password", required=False, type=str);
-        self.parser.add_argument("-H", "--host",     required=False, type=str);
-        self.parser.add_argument("-p", "--port",     required=False, type=int);
-        self.parser.add_argument("-n", "--database", required=False, type=int);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@redis-cli_info')
+        self.parser.add_argument("-u", "--user",     required=False, type=str)
+        self.parser.add_argument("-s", "--password", required=False, type=str)
+        self.parser.add_argument("-H", "--host",     required=False, type=str)
+        self.parser.add_argument("-p", "--port",     required=False, type=int)
+        self.parser.add_argument("-n", "--database", required=False, type=int)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='redis')
 
     def _get_batch_status(self, request):
         cmd = "redis-cli --raw"
@@ -50,13 +51,13 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return True
 
     @plugin.command("CURRENT_OPERATIONS")
-    @statsd.counter("sys.app.redis.current_operations")
+    @statsd.counter
     def get_current_operations_rate(self, request):
         value = self.get_delta_value("total_commands_processed", request)
         return self.get_result(request, value, "%s commands" % value, 'current_commands')
 
     @plugin.command("AVERAGE_OPERATIONS_RATE")
-    @statsd.gauge("sys.app.redis.average_operations_rate")
+    @statsd.gauge
     def get_average_operations_rate(self, request):
         queries = self.get_status_value("total_commands_processed", request)
         sec = self.get_status_value("uptime_in_seconds", request)
@@ -64,25 +65,25 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return self.get_result(request, value, '%s commands per second' % value, 'average_rate')
 
     @plugin.command("READ_WRITE_RATIO")
-    @statsd.gauge("sys.app.redis.read_write_ratio")
+    @statsd.gauge
     def get_read_write_ratio(self, request):
-        return nagios.Result(request.type, nagios.Status.UNKNOWN,
+        return nagios.Result(request.appname, request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
 
     @plugin.command("MEMORY_USED")
-    @statsd.gauge("sys.app.redis.memory_used")
+    @statsd.gauge
     def get_memory_used(self, request):
         value = nagios.BtoMB(self.get_status_value("used_memory", request))
         return self.get_result(request, value, "%sMB used_memory" % value, 'used_memory', UOM="MB")
 
     @plugin.command("CHANGES_SINCE_LAST_SAVE")
-    @statsd.gauge("sys.app.redis.changes_since_last_save")
+    @statsd.gauge
     def get_changes_since_last_save(self, request):
         value = self.get_status_value("changes_since_last_save", request)
         return self.get_result(request, value, "%s changes since last save" % value, 'changes')
 
     @plugin.command("TOTAL_KEYS")
-    @statsd.gauge("sys.app.redis.total_keys")
+    @statsd.gauge
     def get_total_keys(self, request):
         cmd = "redis-cli dbsize"
         output = commands.getoutput(cmd)
@@ -94,9 +95,9 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return self.get_result(request, value, '%s total keys' % value, 'total_keys')
 
     @plugin.command("COMMAND_FREQUENCY")
-    @statsd.gauge("sys.app.redis.command_frequency")
+    @statsd.gauge
     def get_command_frequency(self, request):
-        return nagios.Result(request.type, nagios.Status.UNKNOWN,
+        return nagios.Result(request.appname, request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
 
 if __name__ == "__main__":

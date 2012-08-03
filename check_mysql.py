@@ -12,11 +12,12 @@ import statsd
 class MySqlChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MySqlChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@mysqladmin_extended-status');
-        self.parser.add_argument("-u", "--user",     required=False, type=str, default='mysql');
-        self.parser.add_argument("-s", "--password", required=False, type=str);
-        self.parser.add_argument("-H", "--host",     required=False, type=str);
-        self.parser.add_argument("-p", "--port",     required=False, type=int);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@mysqladmin_extended-status')
+        self.parser.add_argument("-u", "--user",     required=False, type=str, default='mysql')
+        self.parser.add_argument("-s", "--password", required=False, type=str)
+        self.parser.add_argument("-H", "--host",     required=False, type=str)
+        self.parser.add_argument("-p", "--port",     required=False, type=int)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='mysql')
 
     def _get_batch_status(self, request):
         cmd = "mysqladmin"
@@ -44,7 +45,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         pass
 
     @plugin.command("QUERIES_PER_SECOND")
-    @statsd.gauge("sys.app.mysql.query_per_sec")
+    @statsd.gauge
     def get_queries_per_second(self, request):
         queries = self.get_delta_value("Queries", request)
         sec = self.get_delta_value("Uptime", request)
@@ -52,13 +53,13 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         return self.get_result(request, value, '%s queries per second' % value, 'total')
 
     @plugin.command("SLOW_QUERIES")
-    @statsd.counter("sys.app.mysql.slow_queries")
+    @statsd.counter
     def get_slow_queries(self, request):
         value = self.get_delta_value("Slow_queries", request)
         return self.get_result(request, value, '%s slow queries' % value, 'total')
 
     @plugin.command("ROW_OPERATIONS")
-    @statsd.counter("sys.app.mysql.row_operations")
+    @statsd.counter
     def get_row_opertions(self, request):
         # read data from command line, calculate and verdict
         attrs = ["Innodb_rows_deleted","Innodb_rows_inserted",
@@ -77,7 +78,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.type, status_code, '%s row operations' % total);
+        r = nagios.Result(request.appname, request.type, status_code, '%s row operations' % total);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('rows_deleted', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('rows_inserted',values[1], warn=request.warn, crit=request.crit)
@@ -86,7 +87,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("TRANSACTIONS")
-    @statsd.counter("sys.app.mysql.transactions")
+    @statsd.counter
     def get_transactions(self, request):
         # read data from command line, calculate and verdict
         attrs = ["Handler_commit","Handler_rollback"]
@@ -104,28 +105,27 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.type, status_code, '%s transactions' % total);
+        r = nagios.Result(request.appname, request.type, status_code, '%s transactions' % total);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('commit', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('rollback',values[1], warn=request.warn, crit=request.crit)
         return r
 
     @plugin.command("NETWORK_TRAFFIC")
-    @statsd.counter("sys.app.mysql.network_traffic")
+    @statsd.counter
     def get_network_traffic(self, request):
-        return nagios.Result(request.type, nagios.Status.UNKNOWN,
+        return nagios.Result(request.appname, request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
 
     @plugin.command("CONNECTIONS")
-    @statsd.counter("sys.app.mysql.connections")
+    @statsd.counter
     def get_connections(self, request):
         value = self.get_delta_value("Connections", request)
         return self.get_result(request, value, '%s new connections' % value, 'conns')
 
     @plugin.command("TOTAL_BYTES")
-    @statsd.counter("sys.app.mysql.total_bytes")
+    @statsd.counter
     def get_bytes_transfer(self, request):
-        service = request.type
         # read data from command line, calculate and verdict
         attrs = ["Bytes_received", "Bytes_sent"]
         values = []
@@ -142,14 +142,14 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(service, status_code, '%sMB in total' % total);
+        r = nagios.Result(request.appname, request.type, status_code, '%sMB in total' % total);
         r.add_performance_data('total', total, 'MB', warn=request.warn, crit=request.crit)
         r.add_performance_data('bytes_received', values[0], 'MB', warn=request.warn, crit=request.crit)
         r.add_performance_data('bytes_sent', values[1], 'MB', warn=request.warn, crit=request.crit)
         return r
 
     @plugin.command("SELECTS")
-    @statsd.counter("sys.app.mysql.selects")
+    @statsd.counter
     def get_select_stats(self, request):
         # read data from command line, calculate and verdict
         attrs = ["Select_full_join",  "Select_full_range_join","Select_range",
@@ -168,7 +168,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.type, status_code, '%s select' % total);
+        r = nagios.Result(request.appname, request.type, status_code, '%s select' % total);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('select_full_join', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('select_full_range_join', values[1], warn=request.warn, crit=request.crit)
@@ -178,9 +178,9 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("REPLICATION")
-    @statsd.gauge("sys.app.mysql.replication_delays")
+    @statsd.gauge
     def get_replication(self, request):
-        return nagios.Result(request.type, nagios.Status.UNKNOWN,
+        return nagios.Result(request.appname, request.type, nagios.Status.UNKNOWN,
                                  "mysterious status")
 
 if __name__ == "__main__":

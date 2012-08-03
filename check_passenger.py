@@ -13,8 +13,9 @@ from nagios import CommandBasedPlugin as plugin
 class PassengerChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(PassengerChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str, default="pd@passenger-status");
-        self.parser.add_argument("-p", "--pid",      required=False, type=str);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default="pd@passenger-status")
+        self.parser.add_argument("-p", "--pid",      required=False, type=str)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='passenger')
 
     def _get_batch_status(self, request):
         # TODO: make sudo and path optional
@@ -42,19 +43,19 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         return True
 
     @plugin.command("RUNNING_PROCESSES")
-    @statsd.gauge("sys.app.passenger.max_processes")
+    @statsd.gauge
     def get_procs(self, request):
         value = self.get_status_value("count", request)
         return self.get_result(request, value, '%s running processes' % value, 'procs')
 
     @plugin.command("MAX_PROCESSES")
-    @statsd.gauge("sys.app.passenger.running_processes")
+    @statsd.gauge
     def get_max_procs(self, request):
         value = self.get_status_value("max", request)
         return self.get_result(request, value, '%s max processes' % value, 'max')
 
     @plugin.command("ACTIVE_PROCESSES")
-    @statsd.gauge("sys.app.passenger.active_processes")
+    @statsd.gauge
     def get_active_procs(self, request):
         value = self.get_status_value("active", request)
         return self.get_result(request, value, '%s active processes' % value, 'active')

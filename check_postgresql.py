@@ -15,9 +15,10 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@stats_psql')
         self.parser.add_argument("-u", "--user",     required=False, type=str, default='postgres')
         self.parser.add_argument("-p", "--port",     required=False, type=int)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='resque')
 
     @plugin.command("CONNECTIONS_ACTIVE")
-    @statsd.gauge("sys.app.postgres.connections_active")
+    @statsd.gauge
     def get_connections_active(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity " \
                    "WHERE waiting=\'f\' AND current_query<>\'<IDLE>\'"
@@ -25,14 +26,14 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return self.get_result(request, value, '%s active conns' % value, 'active')
 
     @plugin.command("CONNECTIONS_WAITING")
-    @statsd.gauge("sys.app.postgres.connections_waiting")
+    @statsd.gauge
     def get_connections_waiting(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE waiting=\'t\';"
         value = self._single_value_stat(request, sql_stmt)
         return self.get_result(request, value, '%s waiting conns' % value, 'waiting')
 
     @plugin.command("CONNECTIONS_IDLE")
-    @statsd.gauge("sys.app.postgres.conenctions_idle")
+    @statsd.gauge
     def get_connections_idle(self, request):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE current_query=\'<IDLE>\';"
         value = self._single_value_stat(request, sql_stmt)
@@ -49,7 +50,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
             raise nagios.StatusUnknownError(request.type)
 
     @plugin.command("DATABASE_SIZE")
-    @statsd.gauge("sys.app.postgres.database_size")
+    @statsd.gauge
     def get_database_size(self, request):
         sql_stmt = "SELECT datname, pg_database_size(datname) FROM pg_database;"
         stat, sub_stats = self._multi_value_stats(request, sql_stmt)
@@ -61,7 +62,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     'total dbsize: %sMB' % value, 'total', UOM='MB', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_ACCESS")
-    @statsd.gauge("sys.app.postgres.locks_access")
+    @statsd.gauge
     def get_locks_access(self, request):
         statkey = "access"
         sql_stmt = "SELECT mode, count(*) " \
@@ -73,7 +74,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     '%s locks access' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_ROW")
-    @statsd.gauge("sys.app.postgres.locks_row")
+    @statsd.gauge
     def get_locks_row(self, request):
         statkey = "row"
         sql_stmt = "SELECT mode, count(*) " \
@@ -85,7 +86,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     '%s locks row' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_SHARE")
-    @statsd.gauge("sys.app.postgres.locks_share")
+    @statsd.gauge
     def get_locks_share(self, request):
         statkey = "share"
         sql_stmt = "SELECT mode, count(*) " \
@@ -97,7 +98,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     '%s locks share' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("LOCKS_EXCLUSIVE")
-    @statsd.gauge("sys.app.postgres.locks_exclusive")
+    @statsd.gauge
     def get_locks_exclusive(self, request):
         statkey = "exclusive"
         sql_stmt = "SELECT mode, count(*) " \
@@ -120,7 +121,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return stat, sub_stats
 
     @plugin.command("TUPLES_READ")
-    @statsd.counter("sys.app.postgres.tuples_fetched")
+    @statsd.counter
     def get_tuples_read(self, request):
         statkey = "tup_fetched"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
@@ -129,7 +130,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     '%s tuples fetched' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("TUPLES_INSERTED")
-    @statsd.counter("sys.app.postgres.tuples_inserted")
+    @statsd.counter
     def get_tuples_inserted(self, request):
         statkey = "tup_inserted"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
@@ -138,7 +139,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     '%s tuples inserted' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("TUPLES_UPDATED")
-    @statsd.counter("sys.app.postgres.tuples_updated")
+    @statsd.counter
     def get_tuples_updated(self, request):
         statkey = "tup_updated"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey
@@ -147,7 +148,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                     '%s tuples updated' % value, 'total', sub_perfs=sub_stats.iteritems())
 
     @plugin.command("TUPLES_DELETED")
-    @statsd.counter("sys.app.postgres.tuples_deleted")
+    @statsd.counter
     def get_tuples_deleted(self, request):
         statkey = "tup_deleted"
         sql_stmt = "SELECT datname, %s FROM pg_stat_database;" % statkey

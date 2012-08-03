@@ -19,6 +19,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-s", "--password", required=False, type=str)
         self.parser.add_argument("-H", "--host",     required=False, type=str)
         self.parser.add_argument("-p", "--port",     required=False, type=int)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='mongodb')
 
     def _get_batch_status(self, request):
         cmd = "mongostat -n 1 --noheaders"
@@ -86,90 +87,90 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return True
 
     @plugin.command("CONNECTIONS")
-    @statsd.gauge("sys.app.mongodb.connections")
+    @statsd.gauge
     def get_connections(self, request):
         query = "db.serverStatus().connections.current"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%s new connections' % value, 'conns')
 
     @plugin.command("MEMORY_USED")
-    @statsd.gauge("sys.app.mongodb.memory_used")
+    @statsd.gauge
     def get_memory_used(self, request):
         query = "db.serverStatus().mem.resident"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%sMB resident size' % value, 'res', UOM='MB')
 
     @plugin.command("INSERT")
-    @statsd.counter("sys.app.mongodb.insert")
+    @statsd.counter
     def get_insert(self, request):
         query = "db.serverStatus().opcounters.insert"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%s inserts' % value, 'inserts')
 
     @plugin.command("UPDATE")
-    @statsd.counter("sys.app.mongodb.update")
+    @statsd.counter
     def get_update(self, request):
         query = "db.serverStatus().opcounters.update"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%s updates' % value, 'updates')
 
     @plugin.command("COMMAND")
-    @statsd.counter("sys.app.mongodb.command")
+    @statsd.counter
     def get_command(self, request):
         query = "db.serverStatus().opcounters.command"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%s commands' % value, 'commands')
 
     @plugin.command("QUERY")
-    @statsd.counter("sys.app.mongodb.query")
+    @statsd.counter
     def get_query(self, request):
         query = "db.serverStatus().opcounters.query"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%s queries' % value, 'queries')
 
     @plugin.command("DELETE")
-    @statsd.counter("sys.app.mongodb.delete")
+    @statsd.counter
     def get_delete_rate(self, request):
         query = "db.serverStatus().opcounters.delete"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, '%s deletes' % value, 'deletes')
 
     @plugin.command("LOCKED_PERCENTAGE")
-    @statsd.gauge("sys.app.mongodb.locked_ratio")
+    @statsd.gauge
     def get_locked_ratio(self, request):
         value = self.get_status_value("locked %", request)
         return self.get_result(request, value, str(value) + '% locked', 'ratio', UOM="%")
 
     @plugin.command("MISS_RATIO")
-    @statsd.gauge("sys.app.mongodb.miss_ratio")
+    @statsd.gauge
     def get_miss_ratio(self, request):
         query = "db.serverStatus().indexCounters.btree.missRatio"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, str(value) + '% missed', 'missed', UOM="%")
 
     @plugin.command("RESETS")
-    @statsd.counter("sys.app.mongodb.resets")
+    @statsd.counter
     def get_resets(self, request):
         query = "db.serverStatus().indexCounters.btree.resets"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, str(value) + 'resets', 'resets')
 
     @plugin.command("HITS")
-    @statsd.counter("sys.app.mongodb.hits")
+    @statsd.counter
     def get_hits(self, request):
         query = "db.serverStatus().indexCounters.btree.hits"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, str(value) + 'hits', 'hits')
 
     @plugin.command("MISSES")
-    @statsd.counter("sys.app.mongodb.misses")
+    @statsd.counter
     def get_misses(self, request):
         query = "db.serverStatus().indexCounters.btree.misses"
         value = nagios.to_num(self.run_query(request, query))
         return self.get_result(request, value, str(value) + 'misses', 'misses')
 
     @plugin.command("ACCESSES")
-    @statsd.counter("sys.app.mongodb.accesses")
+    @statsd.counter
     def get_accesses(self, request):
         query = "db.serverStatus().indexCounters.btree.accesses"
         value = nagios.to_num(self.run_query(request, query))

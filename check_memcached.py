@@ -12,9 +12,10 @@ import statsd
 class MemcachedChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MemcachedChecker, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@memcached_stats');
-        self.parser.add_argument("-H", "--host",     required=False, type=str, default="localhost");
-        self.parser.add_argument("-p", "--port",     required=False, type=int, default=11211);
+        self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@memcached_stats')
+        self.parser.add_argument("-H", "--host",     required=False, type=str, default="localhost")
+        self.parser.add_argument("-p", "--port",     required=False, type=int, default=11211)
+        self.parser.add_argument("-a", "--appname",  required=False, type=str, default='memcached')
 
     def _get_batch_status(self, request):
         cmd = "echo 'stats' | nc"
@@ -49,43 +50,43 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
         return True
 
     @plugin.command("OPERATIONS_SET_REQUESTS")
-    @statsd.counter("sys.app.memcached.operations_set_requests")
+    @statsd.counter
     def get_cmd_set(self, request):
         value = self.get_delta_value("cmd_set", request)
         return self.get_result(request, value, '%s set requests' % value, 'set_requests')
 
     @plugin.command("OPERATIONS_GET_REQUESTS")
-    @statsd.counter("sys.app.memcached.operations_get_requests")
+    @statsd.counter
     def get_cmd_get(self, request):
         value = self.get_delta_value("cmd_get", request)
         return self.get_result(request, value, '%s get resquests' % value, 'get_requests')
 
     @plugin.command("BYTES_READ")
-    @statsd.counter("sys.app.memcached.bytes_read")
+    @statsd.counter
     def get_bytes_read(self, request):
         value = self.get_delta_value("bytes_read", request)
         return self.get_result(request, value, '%s bytes read' % value, 'bytes_read')
 
     @plugin.command("BYTES_WRITTEN")
-    @statsd.counter("sys.app.memcached.bytes_written")
+    @statsd.counter
     def get_bytes_written(self, request):
         value = self.get_delta_value("bytes_written", request)
         return self.get_result(request, value, '%s bytes written' % value, 'bytes_written')
 
     @plugin.command("BYTES_ALLOCATED")
-    @statsd.gauge("sys.app.memcached.bytes_allocated")
+    @statsd.gauge
     def get_bytes_allocated(self, request):
         value = self.get_delta_value("bytes", request)
         return self.get_result(request, value, '%s bytes allocated' % value, 'bytes_allocated')
 
     @plugin.command("TOTAL_ITEMS")
-    @statsd.gauge("sys.app.memcached.total_items")
+    @statsd.gauge
     def get_total_items(self, request):
         value = self.get_status_value("total_items", request)
         return self.get_result(request, value, '%s total items' % value, 'items')
 
     @plugin.command("TOTAL_CONNECTIONS")
-    @statsd.gauge("sys.app.memcached.total_connections")
+    @statsd.gauge
     def get_total_connections(self, request):
         value = self.get_status_value("total_connections", request)
         return self.get_result(request, value, '%s total connections' % value, "connections")
