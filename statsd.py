@@ -5,8 +5,8 @@ Created on Jun 14, 2012
 '''
 import os, sys
 _rootpath = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(
-    os.path.join(_rootpath, "..", "statsd_clients", "python"))
+sys.path.append(os.path.join(_rootpath, "..", "statsd_clients", "python"))
+sys.path.append(os.path.join(_rootpath, "statsd"))
 from afclient import Statsd, AFTransport
 
 Statsd.set_transport(AFTransport())
