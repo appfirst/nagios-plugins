@@ -4,9 +4,9 @@ Created on Jun 20, 2012
 @author: Yangming
 '''
 import sys
-from os import path
-_rootpath = path.dirname(path.realpath(__file__))
-sys.path.append(path.join(_rootpath, ".."))
+import os
+_rootpath = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(_rootpath, ".."))
 
 import unittest
 from test_plugin import TestPlugin
@@ -15,6 +15,10 @@ from check_redis import RedisChecker
 class TestRedisChecker(TestPlugin):
     def setUp(self):
         self.checker = RedisChecker()
+        try:
+            os.mkdir("./status/")
+        except OSError:
+            pass
         print 'check_redis'
 
     def test_get_average_operations_rate(self):
@@ -25,6 +29,9 @@ class TestRedisChecker(TestPlugin):
 
     def test_get_memory_used(self):
         self.assert_status("-t MEMORY_USED -z redis_test -d ./status/")
+
+    def test_get_current_operations(self):
+        self.assert_status("-t CURRENT_CHANGES -z redis_test -d ./status/")
 
     def test_get_change_since_last_save(self):
         self.assert_status("-t CHANGES_SINCE_LAST_SAVE -z redis_test -d ./status/")

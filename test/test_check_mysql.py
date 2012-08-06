@@ -4,9 +4,9 @@ Created on Jun 20, 2012
 @author: Yangming
 '''
 import sys
-from os import path
-_rootpath = path.dirname(path.realpath(__file__))
-sys.path.append(path.join(_rootpath, ".."))
+import os
+_rootpath = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(_rootpath, ".."))
 
 import unittest
 from test_plugin import TestPlugin
@@ -15,6 +15,10 @@ from check_mysql import MySqlChecker
 class TestMySqlChecker(TestPlugin):
     def setUp(self):
         self.checker = MySqlChecker()
+        try:
+            os.mkdir("./status/")
+        except OSError:
+            pass
         print 'check_mysql'
 
     def test_get_queries_per_second(self):

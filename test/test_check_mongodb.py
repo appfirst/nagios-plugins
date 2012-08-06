@@ -4,9 +4,9 @@ Created on Jun 20, 2012
 @author: Yangming
 '''
 import sys
-from os import path
-_rootpath = path.dirname(path.realpath(__file__))
-sys.path.append(path.join(_rootpath, ".."))
+import os
+_rootpath = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(_rootpath, ".."))
 
 import unittest
 from test_plugin import TestPlugin
@@ -15,6 +15,10 @@ from check_mongodb import MongoDBChecker
 class TestMongoDBChecker(TestPlugin):
     def setUp(self):
         self.checker = MongoDBChecker()
+        try:
+            os.mkdir("./status/")
+        except OSError:
+            pass
         print 'check_mongodb'
 
     def test_get_connections(self):
@@ -42,7 +46,7 @@ class TestMongoDBChecker(TestPlugin):
         self.assert_status("-t LOCKED_PERCENTAGE -z mongodb_test -d ./status/")
 
     def test_get_miss_ratio(self):
-        self.assert_status("-t MISS_RATIO -z mongodb_test -d ./status/")
+        self.assert_status("-t MISS_PERCENTAGE -z mongodb_test -d ./status/")
 
     def test_get_resets(self):
         self.assert_status("-t RESETS -z mongodb_test -d ./status/")
