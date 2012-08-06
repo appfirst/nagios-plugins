@@ -76,6 +76,12 @@ class RedisChecker(nagios.BatchStatusPlugin):
         value = nagios.BtoMB(self.get_status_value("used_memory", request))
         return self.get_result(request, value, "%sMB used_memory" % value, 'used_memory', UOM="MB")
 
+    @plugin.command("CURRENT_CHANGES")
+    @statsd.gauge
+    def get_current_changes(self, request):
+        value = self.get_delta_value("changes_since_last_save", request)
+        return self.get_result(request, value, "%s changes" % value, 'changes')
+
     @plugin.command("CHANGES_SINCE_LAST_SAVE")
     @statsd.gauge
     def get_changes_since_last_save(self, request):

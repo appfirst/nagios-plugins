@@ -110,24 +110,28 @@ class StatusUnknownError(Exception):
 
 class MultipleInstancesError(StatusUnknownError):
     def __init__(self, request, msg=None):
+        self.appname = request.appname
         self.status_type = request.type
         self.status = Status.UNKNOWN
         self.msg = msg or "multiple instances found, specific the one you need."
 
 class ServiceInaccessibleError(StatusUnknownError):
     def __init__(self, request, msg=None):
+        self.appname = request.appname
         self.status_type = request.type
         self.status = Status.CRITICAL
         self.msg = msg or "service is not accessible."
 
 class AuthenticationFailedError(StatusUnknownError):
     def __init__(self, request, msg=None):
+        self.appname = request.appname
         self.status_type = request.type
         self.status = Status.UNKNOWN
         self.msg = msg or "authentication failed. please specific user and password"
 
 class OutputFormatError(StatusUnknownError):
     def __init__(self, request, msg=None):
+        self.appname = request.appname
         self.status_type = request.type
         self.status = Status.UNKNOWN
         self.msg = msg or "output format is not as expected."
@@ -221,6 +225,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
     # a class has to provide
     #    _get_batch_status(request)
     #    _validate_output(request, output)
+    #    _parse_output(request, output)
     # in order to use this convenient function
     def retrieve_batch_status(self, request):
         stats = {}

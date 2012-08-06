@@ -36,7 +36,9 @@ class PassengerChecker(nagios.BatchStatusPlugin):
     def _validate_output(self, request, output):
         if "command not found" in output:
             raise nagios.ServiceInaccessibleError(request, output)
-        if "ERROR: You are not authorized" in output:
+        elif "ERROR: Phusion Passenger doesn't seem to be running." in output:
+            raise nagios.ServiceInaccessibleError(request, output)
+        elif "ERROR: You are not authorized" in output:
             raise nagios.AuthenticationFailedError(request, output)
         elif "ERROR" in output:
             raise nagios.StatusUnknownError(request, output)

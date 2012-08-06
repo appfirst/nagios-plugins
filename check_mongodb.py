@@ -76,7 +76,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
     def _validate_output(self, request, output):
         if "command not found" in output:
             raise nagios.ServiceInaccessibleError(request, output)
-        elif "Error: couldn't connect to server" in output:
+        elif "couldn't connect to server" in output:
             raise nagios.ServiceInaccessibleError(request, output)
         elif "exception: login failed" in output:
             raise nagios.AuthenticationFailedError(request, output)
@@ -141,7 +141,7 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         value = self.get_status_value("locked %", request)
         return self.get_result(request, value, str(value) + '% locked', 'ratio', UOM="%")
 
-    @plugin.command("MISS_RATIO")
+    @plugin.command("MISS_PERCENTAGE")
     @statsd.gauge
     def get_miss_ratio(self, request):
         query = "db.serverStatus().indexCounters.btree.missRatio"
