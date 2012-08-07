@@ -76,7 +76,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
     @plugin.command("BYTES_ALLOCATED")
     @statsd.gauge
     def get_bytes_allocated(self, request):
-        value = self.get_delta_value("bytes", request)
+        value = self.get_status_value("bytes", request)
         return self.get_result(request, value, '%s bytes allocated' % value, 'bytes_allocated')
 
     @plugin.command("TOTAL_ITEMS")
