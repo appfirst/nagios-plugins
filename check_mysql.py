@@ -78,7 +78,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.appname, request.type, status_code, '%s row operations' % total);
+        r = nagios.Result(request.type, status_code, '%s row operations' % total, request.appname);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('rows_deleted', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('rows_inserted',values[1], warn=request.warn, crit=request.crit)
@@ -105,7 +105,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.appname, request.type, status_code, '%s transactions' % total);
+        r = nagios.Result(request.type, status_code, '%s transactions' % total, request.appname);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('commit', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('rollback',values[1], warn=request.warn, crit=request.crit)
@@ -114,8 +114,8 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     @plugin.command("NETWORK_TRAFFIC")
     @statsd.counter
     def get_network_traffic(self, request):
-        return nagios.Result(request.appname, request.type, nagios.Status.UNKNOWN,
-                                 "mysterious status")
+        return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "mysterious status", request.appname)
 
     @plugin.command("CONNECTIONS")
     @statsd.counter
@@ -142,7 +142,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.appname, request.type, status_code, '%sMB in total' % total);
+        r = nagios.Result(request.type, status_code, '%sMB in total' % total, request.appname);
         r.add_performance_data('total', total, 'MB', warn=request.warn, crit=request.crit)
         r.add_performance_data('bytes_received', values[0], 'MB', warn=request.warn, crit=request.crit)
         r.add_performance_data('bytes_sent', values[1], 'MB', warn=request.warn, crit=request.crit)
@@ -168,7 +168,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
 
         # build result
-        r = nagios.Result(request.appname, request.type, status_code, '%s select' % total);
+        r = nagios.Result(request.type, status_code, '%s select' % total, request.appname);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         r.add_performance_data('select_full_join', values[0], warn=request.warn, crit=request.crit)
         r.add_performance_data('select_full_range_join', values[1], warn=request.warn, crit=request.crit)
@@ -180,8 +180,8 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     @plugin.command("REPLICATION")
     @statsd.gauge
     def get_replication(self, request):
-        return nagios.Result(request.appname, request.type, nagios.Status.UNKNOWN,
-                                 "mysterious status")
+        return nagios.Result(request.type, nagios.Status.UNKNOWN,
+                                 "mysterious status", request.appname)
 
 if __name__ == "__main__":
     import sys

@@ -9,9 +9,15 @@ sys.path.append(os.path.join(_rootpath, "..", "statsd_clients", "python"))
 sys.path.append(os.path.join(_rootpath, "statsd"))
 from afclient import Statsd, AFTransport
 
+BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+
+def set_bucket_pattern(pattern):
+    BUCKET_PATTERN = pattern
+
 Statsd.set_transport(AFTransport())
 
-BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+def set_transport(transport):
+    Statsd.set_transport(transport)
 
 def timer(method):
     def send_statsd(*args, **kwargs):

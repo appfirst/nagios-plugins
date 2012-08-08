@@ -40,12 +40,12 @@ class Status(object):
         return status_code
 
 class Result(object):
-    def __init__(self, appname, type, status_code, message):
-        self.appname = appname.lower()
+    def __init__(self, type, status_code, message="", appname=""):
         self.type = type.upper()
         self.status_code = status_code
         self.status = Status.to_status(status_code)
         self.message = message
+        self.appname = appname.lower()
         self.perf_data_list = []
         self.exit_code = Status.to_exit_code(status_code)
 
@@ -106,7 +106,7 @@ class StatusUnknownError(Exception):
 
     @property
     def result(self):
-        return Result(self.appname, self.status_type, self.status, str(self))
+        return Result(self.status_type, self.status, str(self), self.appname)
 
 class MultipleInstancesError(StatusUnknownError):
     def __init__(self, request, msg=None):
@@ -202,7 +202,7 @@ class CommandBasedPlugin(BasePlugin):
             result = self.commands[request.type](self, request)
             if result:
                 return result
-        return Result(request.appname, request.type, Status.UNKNOWN, "mysterious status")
+        return Result(request.type, Status.UNKNOWN, "mysterious status", request.appname)
 
     @classmethod
     def command(cls, command_str):
@@ -286,7 +286,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
     # sub_perfs = [ (pfname, pfvalue), ... ]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
         status_code = self.verdict(value, request)
-        r = Result(request.appname, request.type, status_code, message);
+        r = Result(request.type, status_code, message, request.appname);
         r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
         for pfname, pfvalue in sub_perfs:
             r.add_performance_data(pfname, pfvalue, warn=request.warn, crit=request.crit)

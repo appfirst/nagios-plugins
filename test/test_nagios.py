@@ -22,7 +22,7 @@ class TestBasePlugin(unittest.TestCase):
         sys.stdout = self.original_stdout
 
     def test_result_str(self):
-        r = nagios.Result('MYSQL', 'SLOW_QUERIES', nagios.Status.OK, '2 queries')
+        r = nagios.Result('SLOW_QUERIES', nagios.Status.OK, '2 queries', 'MYSQL')
         self.assertEqual(str(r), 'SLOW_QUERIES OK: 2 queries')
         r.add_performance_data('slow_queries', 2, warn=10, crit=20)
         self.assertEqual(str(r), 'SLOW_QUERIES OK: 2 queries | slow_queries=2;10;20')
