@@ -5,7 +5,7 @@ Nagios Plugins by [AppFirst](http://www.appfirst.com)
 
 This README will cover the following topics:
 
-- [Nagios Plugins](#Nagios Plugins)
+- [Nagios Plugins](#Nagios-Plugins)
  	* check_postgresql
  	* check_mysql
  	* check_mongodb
@@ -13,9 +13,9 @@ This README will cover the following topics:
  	* check_redis
  	* check_resque
  	* check_passenger
-- [Data Module and Base Classes](#Data Module and Base Classes)
-- [StastD Wrapping](#StastD Wrapping)
-- [AppFirst Integration](#AppFirst Integration)
+- [Data Module and Base Classes](#Data-Module-and-Base-Classes)
+- [StastD Wrapping](#StastD-Wrapping)
+- [AppFirst Integration](#AppFirst-Integration)
 
 For further question, please email <yangming@appfirst.com> or 
 
