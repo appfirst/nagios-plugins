@@ -1,3 +1,5 @@
+
+![Appfirst](http://www.appfirst.com/img/appfirst-logo.png)
 Nagios Plugins by [AppFirst](http://www.appfirst.com)
 =====================================================
 
@@ -5,7 +7,7 @@ Nagios Plugins by [AppFirst](http://www.appfirst.com)
 
 This README will cover the following topics:
 
-- [Nagios Plugins](#Nagios-Plugins)
+- [Nagios Plugins](#nagios-plugins)
  	* check_postgresql
  	* check_mysql
  	* check_mongodb
@@ -13,13 +15,11 @@ This README will cover the following topics:
  	* check_redis
  	* check_resque
  	* check_passenger
-- [Data Module and Base Classes](#Data-Module-and-Base-Classes)
-- [StastD Wrapping](#StastD-Wrapping)
-- [AppFirst Integration](#AppFirst-Integration)
+- [Data Module and Base Classes](#data-module-and-base-classes)
+- [StastD Wrapping](#stastd-wrapping)
+- [AppFirst Integration](#appfirst-integration)
 
-For further question, please email <yangming@appfirst.com> or 
-
-
+For further question, please email <yangming@appfirst.com>
 
 ##Nagios Plugins
 ------------------------------
@@ -33,10 +33,12 @@ At the moment, there are 2 kinds of statistical value in general.
 - **STATUS** value, the value at the moment of checking.
 - **DELTA** value, the changes between now and the last time of checking. In most cases, these values are not provided by the service/servers. The services are more likely to provide a value since the server is started. Those values, such as *total connections*, *total operations* or *total bytes received* are incremental values, so it's impossible to set a threshold for warning and critical (as eventually it will pass over any value given). Thus we'll have to calculate the delta by comparing the current value with previously checked value. And we'll also have to store the current one for future comparison. By defining a rootdir and a filename with `-d ROOTDIR -f FILENAME`, the data will be store on disk. By default, rootdir is `/tmp` and the filenames looks like `pd@cmd2get_data`. For the first time running the script or if the file is not accessible (removed, rootdir changed, etc), the output value will not be delta value since there is no previous value referrable.
 
-value 
+Values are either one of:
 
 - **SINGLE** Most data sources has one value for each metrics.
 - **MULTIPLE** Some data sources have provided more than one statistical value, i.e. sub-performance value, such as values of individual databases or of different types. We usually trail those after the total value.
+
+In order to use any of the plugin, make sure you have `nagios.py` and `statsd.py` in PYTHONPATH or in the same folder with the `check_*.py` plugins you'll use.
 
 ###PostgreSQL
 
@@ -461,7 +463,7 @@ Sample output:
 
 Check status for various metrics of Passenger, with commandline access:
 
-    python check_passegner.py <options>
+    python check_passenger.py <options>
 
 the options are:
 
@@ -539,55 +541,55 @@ Note that the statsd descriptor should be applied after the `nagios.CommandBased
 
 Here's TABLE OF COMPARISON OF METRICS:
 
-| [Service]      | [Metrics]               | [FetchMode] | [ValuMode] | [ValueType] | [Statsd] |
-| :------------- | :---------------------- | :---------: | :--------: | :---------: | :------: |
-| **PostgreSQL** | TUPLES_UPDATED          | dedicated   | multiple   | delta       | counter  |
-|                | TUPLES_READ             | dedicated   | multiple   | delta       | counter  |
-|                | TUPLES_INSERTED         | dedicated   | multiple   | delta       | counter  |
-|                | TUPLES_DELETED          | dedicated   | multiple   | delta       | counter  |
-|                | LOCKS_ACCESS            | dedicated   | multiple   | status      | gauge    |
-|                | LOCKS_ROW               | dedicated   | multiple   | status      | gauge    |
-|                | LOCKS_SHARE             | dedicated   | multiple   | status      | gauge    |
-|                | LOCKS_EXCLUSIVE         | dedicated   | multiple   | status      | gauge    |
-|                | DATABASE_SIZE           | dedicated   | multiple   | status      | gauge    |
-|                | CONNECTIONS_WAITING     | dedicated   | single     | status      | gauge    |
-|                | CONNECTIONS_IDLE        | dedicated   | single     | status      | gauge    |
-|                | CONNECTIONS_ACTIVE      | dedicated   | single     | status      | gauge    |
-| **MySQL**      | TRANSACTIONS            | batch       | multiple   | delta       | counter  |
-|                | TOTAL_BYTES             | batch       | multiple   | delta       | counter  |
-|                | SLOW_QUERIES            | batch       | single     | delta       | counter  |
-|                | SELECTS                 | batch       | multiple   | delta       | counter  |
-|                | ROW_OPERATIONS          | batch       | multiple   | delta       | counter  |
-|                | QUERIES_PER_SECOND      | batch       | single     | delta       | gauge    |
-|                | CONNECTIONS             | batch       | single     | delta       | counter  |
-| **MongoDB**    | CONNECTIONS             | dedicated   | single     | status      | gauge    |
-|                | MEMORY_USED             | dedicated   | single     | status      | gauge    |
-|                | INSERT                  | dedicated   | single     | status      | counter  |
-|                | UPDATE                  | dedicated   | single     | status      | counter  |
-|                | COMMAND                 | dedicated   | single     | status      | counter  |
-|                | QUERY                   | dedicated   | single     | status      | counter  |
-|                | DELETE                  | dedicated   | single     | status      | counter  |
-|                | LOCKED_PERCENTAGE       | batch       | single     | status      | gauge    |
-|                | MISS_PERCENTAGE         | dedicated   | single     | status      | gauge    |
-|                | HITS                    | dedicated   | single     | status      | counter  |
-|                | MISSES                  | dedicated   | single     | status      | counter  |
-|                | RESETS                  | dedicated   | single     | status      | counter  |
-|                | ACCESSES                | dedicated   | single     | status      | counter  |
-| **Memcached**  | TOTAL_ITEMS             | batch       | single     | status      | gauge    |
-|                | CURRENT_CONNECTIONS     | batch       | single     | status      | gauge    |
-|                | OPERATIONS_SET_REQUESTS | batch       | single     | delta       | counter  |
-|                | OPERATIONS_GET_REQUESTS | batch       | single     | delta       | counter  |
-|                | BYTES_WRITTEN           | batch       | single     | delta       | counter  |
-|                | BYTES_READ              | batch       | single     | delta       | counter  |
-|                | BYTES_ALLOCATED         | batch       | single     | status      | gauge    |
-| **Redis**      | TOTAL_ITEMS             | dedicated   | single     | status      | gauge    |
-|                | MEMORY_USED             | batch       | single     | status      | gauge    |
-|                | AVERAGE_OPERATIONS_RATE | batch       | single     | status      | gauge    |
-|                | CURRENT_OPERATIONS      | batch       | single     | status      | gauge    |
-|                | CURRENT_CHANGES         | batch       | single     | delta       | counter  |
-|                | CHANGES_SINCE_LAST_SAVE | batch       | single     | status      | gauge    |
-| **Resque**     | QUEUE_LENGTH            | dedicated   | multiple   | status      | gauge    |
-|                | JOB_PROCESSED           | batch       | single     | delta       | counter  |
-| **Passenger**  | RUNNING_PROCESSES       | batch       | single     | status      | gauge    |
-|                | MAX_PROCESSES           | batch       | single     | status      | gauge    |
-|                | ACTIVE_PROCESSES        | batch       | single     | status      | gauge    |
+[Service]      | [Metrics]               | [FetchMode] | [ValuMode] | [ValueType] | [Statsd]
+:------------- | :---------------------- | :---------: | :--------: | :---------: | :------:
+**PostgreSQL** | TUPLES_UPDATED          | dedicated   | multiple   | delta       | counter
+               | TUPLES_READ             | dedicated   | multiple   | delta       | counter
+               | TUPLES_INSERTED         | dedicated   | multiple   | delta       | counter
+               | TUPLES_DELETED          | dedicated   | multiple   | delta       | counter
+               | LOCKS_ACCESS            | dedicated   | multiple   | status      | gauge
+               | LOCKS_ROW               | dedicated   | multiple   | status      | gauge
+               | LOCKS_SHARE             | dedicated   | multiple   | status      | gauge
+               | LOCKS_EXCLUSIVE         | dedicated   | multiple   | status      | gauge
+               | DATABASE_SIZE           | dedicated   | multiple   | status      | gauge
+               | CONNECTIONS_WAITING     | dedicated   | single     | status      | gauge
+               | CONNECTIONS_IDLE        | dedicated   | single     | status      | gauge
+               | CONNECTIONS_ACTIVE      | dedicated   | single     | status      | gauge
+**MySQL**      | TRANSACTIONS            | batch       | multiple   | delta       | counter
+               | TOTAL_BYTES             | batch       | multiple   | delta       | counter
+               | SLOW_QUERIES            | batch       | single     | delta       | counter
+               | SELECTS                 | batch       | multiple   | delta       | counter
+               | ROW_OPERATIONS          | batch       | multiple   | delta       | counter
+               | QUERIES_PER_SECOND      | batch       | single     | delta       | gauge
+               | CONNECTIONS             | batch       | single     | delta       | counter
+**MongoDB**    | CONNECTIONS             | dedicated   | single     | status      | gauge
+               | MEMORY_USED             | dedicated   | single     | status      | gauge
+               | INSERT                  | dedicated   | single     | status      | counter
+               | UPDATE                  | dedicated   | single     | status      | counter
+               | COMMAND                 | dedicated   | single     | status      | counter
+               | QUERY                   | dedicated   | single     | status      | counter
+               | DELETE                  | dedicated   | single     | status      | counter
+               | LOCKED_PERCENTAGE       | batch       | single     | status      | gauge
+               | MISS_PERCENTAGE         | dedicated   | single     | status      | gauge
+               | HITS                    | dedicated   | single     | status      | counter
+               | MISSES                  | dedicated   | single     | status      | counter
+               | RESETS                  | dedicated   | single     | status      | counter
+               | ACCESSES                | dedicated   | single     | status      | counter
+**Memcached**  | TOTAL_ITEMS             | batch       | single     | status      | gauge
+               | CURRENT_CONNECTIONS     | batch       | single     | status      | gauge
+               | OPERATIONS_SET_REQUESTS | batch       | single     | delta       | counter
+               | OPERATIONS_GET_REQUESTS | batch       | single     | delta       | counter
+               | BYTES_WRITTEN           | batch       | single     | delta       | counter
+               | BYTES_READ              | batch       | single     | delta       | counter
+               | BYTES_ALLOCATED         | batch       | single     | status      | gauge
+**Redis**      | TOTAL_ITEMS             | dedicated   | single     | status      | gauge
+               | MEMORY_USED             | batch       | single     | status      | gauge
+               | AVERAGE_OPERATIONS_RATE | batch       | single     | status      | gauge
+               | CURRENT_OPERATIONS      | batch       | single     | status      | gauge
+               | CURRENT_CHANGES         | batch       | single     | delta       | counter
+               | CHANGES_SINCE_LAST_SAVE | batch       | single     | status      | gauge
+**Resque**     | QUEUE_LENGTH            | dedicated   | multiple   | status      | gauge
+               | JOB_PROCESSED           | batch       | single     | delta       | counter
+**Passenger**  | RUNNING_PROCESSES       | batch       | single     | status      | gauge
+               | MAX_PROCESSES           | batch       | single     | status      | gauge
+               | ACTIVE_PROCESSES        | batch       | single     | status      | gauge
