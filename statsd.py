@@ -26,7 +26,7 @@ def timer(method):
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
-            Statsd.timing(bucket, value, 1, result.status)
+            Statsd.timing(bucket, value, message=result.status)
         return result
     return send_statsd
 
