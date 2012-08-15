@@ -19,6 +19,9 @@ Statsd.set_transport(AFTransport())
 def set_transport(transport):
     Statsd.set_transport(transport)
 
+def set_verbosity(verbo):
+    Statsd._transport.verbosity = verbo
+
 def timer(method):
     def send_statsd(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -51,3 +54,16 @@ def gauge(method):
             Statsd.gauge(bucket, value, message=result.status)
         return result
     return send_statsd
+
+
+if __name__ == "__main__":
+    import nagios
+    set_verbosity(True)
+    @timer
+    @gauge
+    @counter
+    def test_wrapper():
+        result = nagios.Result("STATSWRAPPER", 0, appname="nagios")
+        result.add_performance_data("total", 1)
+        return result
+    test_wrapper()

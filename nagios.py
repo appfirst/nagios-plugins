@@ -40,7 +40,7 @@ class Status(object):
         return status_code
 
 class Result(object):
-    def __init__(self, type, status_code, message="", appname=""):
+    def __init__(self, type, status_code, message="", appname="nagios"):
         self.type = type.upper()
         self.status_code = status_code
         self.status = Status.to_status(status_code)
