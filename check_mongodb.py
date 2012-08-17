@@ -59,6 +59,17 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         self._validate_output(request, output)
         return output
 
+    def get_delta_value(self, statkey, request, query):
+        output = self.run_query(request, query)
+        value = nagios.to_num(output)
+
+        laststats = self.retrieve_last_status(request)
+        last_value = laststats.setdefault(statkey, 0)
+        laststats[statkey] = value
+        self.save_status(request, laststats)
+
+        return value - last_value
+
     def _get_query_status(self, request, query):
         query_template = "mongo --quiet" 
         if hasattr(request, "user") and request.user is not None:
@@ -101,38 +112,38 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
         return self.get_result(request, value, '%sMB resident size' % value, 'res', UOM='MB')
 
     @plugin.command("INSERT")
-    @statsd.counter
+    @statsd.gauge
     def get_insert(self, request):
         query = "db.serverStatus().opcounters.insert"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("opcounters.insert", request, query)
         return self.get_result(request, value, '%s inserts' % value, 'inserts')
 
     @plugin.command("UPDATE")
-    @statsd.counter
+    @statsd.gauge
     def get_update(self, request):
         query = "db.serverStatus().opcounters.update"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("opcounters.update", request, query)
         return self.get_result(request, value, '%s updates' % value, 'updates')
 
     @plugin.command("COMMAND")
-    @statsd.counter
+    @statsd.gauge
     def get_command(self, request):
         query = "db.serverStatus().opcounters.command"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("opcounters.command", request, query)
         return self.get_result(request, value, '%s commands' % value, 'commands')
 
     @plugin.command("QUERY")
-    @statsd.counter
+    @statsd.gauge
     def get_query(self, request):
         query = "db.serverStatus().opcounters.query"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("opcounters.query", request, query)
         return self.get_result(request, value, '%s queries' % value, 'queries')
 
     @plugin.command("DELETE")
-    @statsd.counter
+    @statsd.gauge
     def get_delete_rate(self, request):
         query = "db.serverStatus().opcounters.delete"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("opcounters.delete", request, query)
         return self.get_result(request, value, '%s deletes' % value, 'deletes')
 
     @plugin.command("LOCKED_PERCENTAGE")
@@ -146,34 +157,34 @@ class MongoDBChecker(nagios.BatchStatusPlugin):
     def get_miss_ratio(self, request):
         query = "db.serverStatus().indexCounters.btree.missRatio"
         value = nagios.to_num(self.run_query(request, query))
-        return self.get_result(request, value, str(value) + '% missed', 'missed', UOM="%")
+        return self.get_result(request, value, str(value) + '% missed', 'ratio', UOM="%")
 
     @plugin.command("RESETS")
-    @statsd.counter
+    @statsd.gauge
     def get_resets(self, request):
         query = "db.serverStatus().indexCounters.btree.resets"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("indexCounters.btree.resets", request, query)
         return self.get_result(request, value, str(value) + 'resets', 'resets')
 
     @plugin.command("HITS")
-    @statsd.counter
+    @statsd.gauge
     def get_hits(self, request):
         query = "db.serverStatus().indexCounters.btree.hits"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("indexCounters.btree.hits", request, query)
         return self.get_result(request, value, str(value) + 'hits', 'hits')
 
     @plugin.command("MISSES")
-    @statsd.counter
+    @statsd.gauge
     def get_misses(self, request):
         query = "db.serverStatus().indexCounters.btree.misses"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("indexCounters.btree.misses", request, query)
         return self.get_result(request, value, str(value) + 'misses', 'misses')
 
     @plugin.command("ACCESSES")
-    @statsd.counter
+    @statsd.gauge
     def get_accesses(self, request):
         query = "db.serverStatus().indexCounters.btree.accesses"
-        value = nagios.to_num(self.run_query(request, query))
+        value = self.get_delta_value("indexCounters.btree.accesses", request, query)
         return self.get_result(request, value, str(value) + 'accesses', 'accesses')
 
 if __name__ == "__main__":

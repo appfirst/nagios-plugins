@@ -262,7 +262,7 @@ Sample output:
 
 **INSERT**
 
-*dedicated* | *single* | *status*
+*dedicated* | *single* | *delta*
 
 Sample output:
 
@@ -270,7 +270,7 @@ Sample output:
 
 **UPDATE**
 
-*dedicated* | *single* | *status*
+*dedicated* | *single* | *delta*
 
 Sample output:
 
@@ -278,7 +278,7 @@ Sample output:
 
 **COMMAND**
 
-*dedicated* | *single* | *status*
+*dedicated* | *single* | *delta*
 
 Sample output:
 
@@ -286,7 +286,7 @@ Sample output:
 	
 **QUERY**
 
-*dedicated* | *single* | *status*
+*dedicated* | *single* | *delta*
 
 Sample output:
 
@@ -294,11 +294,59 @@ Sample output:
 
 **DELETE**
 
-*dedicated* | *single* | *status*
+*dedicated* | *single* | *delta*
 
 Sample output:
 
 	DELETE OK: 0 deletes | deletes=0
+
+**LOCKED_PERCENTAGE**
+
+*dedicated* | *single* | *delta*
+
+Sample output:
+
+	DELETE OK: 0 locked | ratio=0%
+
+**MISS_PERCENTAGE**
+
+*dedicated* | *single* | *delta*
+
+Sample output:
+
+	DELETE OK: 0 missed | ratio=0%
+
+**RESETS**
+
+*dedicated* | *single* | *delta*
+
+Sample output:
+
+	RESETS OK: 0 resets | resets=0
+
+**HITS**
+
+*dedicated* | *single* | *delta*
+
+Sample output:
+
+	HITS OK: 0 hits | hits=0
+
+**MISSES**
+
+*dedicated* | *single* | *delta*
+
+Sample output:
+
+	MISSES OK: 0 misses | misses=0
+
+**ACCESSES**
+
+*dedicated* | *single* | *delta*
+
+Sample output:
+
+	ACCESSES OK: 0 accesses | accesses=0
 
 ###MemcacheD
 
