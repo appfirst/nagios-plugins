@@ -9,23 +9,28 @@ sys.path.append(os.path.join(_rootpath, "..", "statsd_clients", "python"))
 sys.path.append(os.path.join(_rootpath, "statsd"))
 from afclient import Statsd, AFTransport
 
-BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+COUNTER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+TIMER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+GAUGE_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
 
-def set_bucket_pattern(pattern):
-    BUCKET_PATTERN = pattern
+def set_timer_bucket_pattern(pattern):
+    COUNTER_BUCKET_PATTERN = pattern
+
+def set_timer_bucket_pattern(pattern):
+    TIMER_BUCKET_PATTERN = pattern
+
+def set_gauge_bucket_pattern(pattern):
+    GAUGE_BUCKET_PATTERN = pattern
 
 Statsd.set_transport(AFTransport())
 
 def set_transport(transport):
     Statsd.set_transport(transport)
 
-def set_verbosity(verbo):
-    Statsd._transport.verbosity = verbo
-
 def timer(method):
     def send_statsd(*args, **kwargs):
         result = method(*args, **kwargs)
-        bucket = BUCKET_PATTERN % result
+        bucket = TIMER_BUCKET_PATTERN % result
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
@@ -36,7 +41,7 @@ def timer(method):
 def counter(method):
     def send_statsd(*args, **kwargs):
         result = method(*args, **kwargs)
-        bucket = BUCKET_PATTERN % result
+        bucket = COUNTER_BUCKET_PATTERN % result
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
@@ -47,7 +52,7 @@ def counter(method):
 def gauge(method):
     def send_statsd(*args, **kwargs):
         result = method(*args, **kwargs)
-        bucket = BUCKET_PATTERN % result
+        bucket = GAUGE_BUCKET_PATTERN % result
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
@@ -58,7 +63,7 @@ def gauge(method):
 
 if __name__ == "__main__":
     import nagios
-    set_verbosity(True)
+    Statsd._transport.verbosity = True
     @timer
     @gauge
     @counter
