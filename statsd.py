@@ -9,17 +9,20 @@ sys.path.append(os.path.join(_rootpath, "..", "statsd_clients", "python"))
 sys.path.append(os.path.join(_rootpath, "statsd"))
 from afclient import Statsd, AFTransport
 
-COUNTER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
 TIMER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+COUNTER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
 GAUGE_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
 
 def set_timer_bucket_pattern(pattern):
-    COUNTER_BUCKET_PATTERN = pattern
-
-def set_timer_bucket_pattern(pattern):
+    global TIMER_BUCKET_PATTERN
     TIMER_BUCKET_PATTERN = pattern
 
+def set_counter_bucket_pattern(pattern):
+    global COUNTER_BUCKET_PATTERN
+    COUNTER_BUCKET_PATTERN = pattern
+
 def set_gauge_bucket_pattern(pattern):
+    global GAUGE_BUCKET_PATTERN
     GAUGE_BUCKET_PATTERN = pattern
 
 Statsd.set_transport(AFTransport())

@@ -87,7 +87,7 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
 
     @plugin.command("CURRENT_CONNECTIONS")
     @statsd.gauge
-    def get_total_connections(self, request):
+    def get_current_connections(self, request):
         value = self.get_status_value("curr_connections", request)
         return self.get_result(request, value, '%s current connections' % value, "connections")
 

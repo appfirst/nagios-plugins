@@ -39,7 +39,7 @@ class TestMemcachedChecker(TestPlugin):
     def test_get_total_items(self):
         self.assert_status("-t TOTAL_ITEMS -z memcached_test -d ./status/")
 
-    def test_get_total_connections(self):
+    def test_get_current_connections(self):
         self.assert_status("-t CURRENT_CONNECTIONS -z memcached_test -d ./status/")
 
 if __name__ == "__main__":
