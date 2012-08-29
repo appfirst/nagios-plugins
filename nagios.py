@@ -194,7 +194,7 @@ class BasePlugin(object):
         return status_code
 
     def superimpose(self, status_code, value, request, reverse=False):
-        sc = self.verdict(value, request)
+        sc = self.verdict(value, request, reverse)
         if sc == Status.WARNING and status_code == Status.OK:
             status_code = Status.WARNING
         elif sc == Status.CRITICAL:
