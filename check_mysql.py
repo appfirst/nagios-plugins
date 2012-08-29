@@ -71,11 +71,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
-            sc = self.verdict(v, request)
-            if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
-                status_code = nagios.Status.WARNING
-            elif sc == nagios.Status.CRITICAL:
-                status_code = nagios.Status.CRITICAL
+            status_code = self.superimpose(status_code, v, request)
 
         # build result
         r = nagios.Result(request.type, status_code, '%s row operations' % total, request.appname);
@@ -98,11 +94,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
-            sc = self.verdict(v, request)
-            if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
-                status_code = nagios.Status.WARNING
-            elif sc == nagios.Status.CRITICAL:
-                status_code = nagios.Status.CRITICAL
+            status_code = self.superimpose(status_code, v, request)
 
         # build result
         r = nagios.Result(request.type, status_code, '%s transactions' % total, request.appname);
@@ -135,11 +127,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = float(self.get_delta_value(attr, request)) / 1024 /1024
             values.append(v)
             total += v
-            sc = self.verdict(v, request)
-            if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
-                status_code = nagios.Status.WARNING
-            elif sc == nagios.Status.CRITICAL:
-                status_code = nagios.Status.CRITICAL
+            status_code = self.superimpose(status_code, v, request)
 
         # build result
         r = nagios.Result(request.type, status_code, '%sMB in total' % total, request.appname);
@@ -161,11 +149,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
-            sc = self.verdict(v, request)
-            if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
-                status_code = nagios.Status.WARNING
-            elif sc == nagios.Status.CRITICAL:
-                status_code = nagios.Status.CRITICAL
+            status_code = self.superimpose(status_code, v, request)
 
         # build result
         r = nagios.Result(request.type, status_code, '%s select' % total, request.appname);

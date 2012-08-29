@@ -42,12 +42,15 @@ class Status(object):
 class Result(object):
     def __init__(self, type, status_code, message="", appname="nagios"):
         self.type = type.upper()
-        self.status_code = status_code
-        self.status = Status.to_status(status_code)
+        self.set_status_code(status_code)
         self.message = message
         self.appname = appname.lower()
         self.perf_data_list = []
         self.exit_code = Status.to_exit_code(status_code)
+
+    def set_status_code(self, status_code):
+        self.status_code = status_code
+        self.status = Status.to_status(status_code)
 
     def add_performance_data(self, label, value, UOM=None,
                              warn=None, crit=None, minv=None, maxv=None):
@@ -162,21 +165,40 @@ class BasePlugin(object):
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
-    def verdict(self, value, request):
+    def verdict(self, value, request, reverse=False):
         # default verdict function
         # ok   if value <  warn             crit
         # warn if          warn <= value <  crit
         # crit if          warn             crit <= value
         # if warn and crit is not defined then it's OK.
-        status_code = Status.UNKNOWN
-        if request.warn is not None and value < request.warn:
-            status_code = Status.OK
-        elif request.crit is not None and value >= request.crit:
-            status_code = Status.CRITICAL
-        elif request.warn is not None:
-            status_code = Status.WARNING
+        if not reverse:
+            status_code = Status.UNKNOWN
+            if request.warn is not None and value < request.warn:
+                status_code = Status.OK
+            elif request.crit is not None and value >= request.crit:
+                status_code = Status.CRITICAL
+            elif request.warn is not None:
+                status_code = Status.WARNING
+            else:
+                status_code = Status.OK
         else:
-            status_code = Status.OK
+            status_code = Status.UNKNOWN
+            if request.warn is not None and value > request.warn:
+                status_code = Status.OK
+            elif request.crit is not None and value <= request.crit:
+                status_code = Status.CRITICAL
+            elif request.warn is not None:
+                status_code = Status.WARNING
+            else:
+                status_code = Status.OK
+        return status_code
+
+    def superimpose(self, status_code, value, request, reverse=False):
+        sc = self.verdict(value, request)
+        if sc == Status.WARNING and status_code == Status.OK:
+            status_code = Status.WARNING
+        elif sc == Status.CRITICAL:
+            status_code = Status.CRITICAL
         return status_code
 
 class CommandBasedPlugin(BasePlugin):
@@ -212,7 +234,6 @@ class CommandBasedPlugin(BasePlugin):
             cls.method2commands[method] = command_str
             return method
         return add_command
-
 
 # convenience skeleton class to provide common methods
 # for querying status in a batch output
@@ -287,7 +308,8 @@ class BatchStatusPlugin(CommandBasedPlugin):
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
         status_code = self.verdict(value, request)
         r = Result(request.type, status_code, message, request.appname);
-        r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
+        if value is not None:
+            r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
         for pfname, pfvalue in sub_perfs:
             r.add_performance_data(pfname, pfvalue, warn=request.warn, crit=request.crit)
         return r
