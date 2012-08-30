@@ -24,12 +24,6 @@ class SMARTChecker(nagios.BatchStatusPlugin):
             disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
         return disklist
 
-#    def _get_batch_status(self, request):
-#        if request.disk:
-#            output = commands.getoutput("sudo /sbin/fdisk -l")
-#            disks = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
-#        return commands.getoutput("sudo smartctl -d sat -A %s" % disks[0])
-
     def _validate_output(self, request, output):
         if "=== START OF READ SMART DATA SECTION ===" in output:
             return True
