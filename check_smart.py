@@ -1,4 +1,4 @@
-#!usr/bin/env python
+#!/usr/bin/env python
 '''
 Created on Aug 27, 2012
 
@@ -7,6 +7,7 @@ Created on Aug 27, 2012
 import commands
 import nagios
 import re
+from xml.dom.minidom import parseString
 from nagios import CommandBasedPlugin as plugin
 
 class SMARTChecker(nagios.BatchStatusPlugin):
@@ -14,13 +15,15 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         super(SMARTChecker, self).__init__(*args, **kwargs)
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@smartctl')
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='smart')
-        self.parser.add_argument("-D", "--disk",  required=False, type=str)
+        self.parser.add_argument("-D", "--disk",     required=False, type=str)
+        self.parser.add_argument("-r", "--raid",     required=False, type=str, choices=["adaptec"])
 
     def _get_disks(self, request):
         if request.disk:
             disklist = [request.disk]
         else:
-            output = commands.getoutput("sudo /sbin/fdisk -l")
+            cmd = nagios.rootify("/sbin/fdisk -l")
+            output = commands.getoutput(cmd)
             disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
         return disklist
 
@@ -41,17 +44,35 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                     metricset = fields
                 if fields[0].isdigit() and len(fields) == len(metricset):
                     for metric, value in zip(metricset[2:], fields[2:]):
-                        k = "%s.%s" % (fields[0], metric)
-                        yield k, value
+                        attr = "%s.%s" % (fields[0], metric)
+                        yield attr, value
 
     def retrieve_batch_status(self, request):
+        if request.raid == "adaptec":
+            return self._get_adaptec_status(request)
         stats = {}
         for disk in self._get_disks(request):
-            output = commands.getoutput("sudo /usr/sbin/smartctl -d sat -A %s" % disk)
+            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
+            output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
-            for k, value in self._parse_output(request, output):
-                stats.setdefault(k, {})[disk] = value
+            for attr, value in self._parse_output(request, output):
+                stats.setdefault(attr, {})[disk] = value
+        return stats
+
+    def _get_adaptec_status(self, request):
+        stats = {}
+        cmd = nagios.rootify("/usr/StorMan/arcconf getsmartstats 1")
+        output = commands.getoutput(cmd)
+        xml = output[output.index("<SmartStats"):output.index("</SmartStats>")+13]
+        dom = parseString(xml)
+        for disknode in dom.getElementsByTagName("PhysicalDriveSmartStats"):
+            disk = disknode.getAttribute("id")
+            for attrnode in disknode.getElementsByTagName("Attribute"):
+                attrid = str(int(attrnode.getAttribute("id"), 16))
+                stats.setdefault(attrid + ".VALUE", {})[disk] = attrnode.getAttribute("normalizedCurrent")
+                stats.setdefault(attrid + ".THRESH", {})[disk] = attrnode.getAttribute("normalizedWorst")
+                stats.setdefault(attrid + ".RAW_VALUE", {})[disk] = attrnode.getAttribute("rawValue")
         return stats
 
     def get_status_value(self, attr, request):
@@ -63,6 +84,22 @@ class SMARTChecker(nagios.BatchStatusPlugin):
             return self.stats[attr]
         return self.stats[attr];
 
+    @plugin.command("OVERALL_HEALTH")
+    def getOverallHealth(self, request):
+        message = "overall test results"
+        status_code = nagios.Status.OK
+        for disk in self._get_disks(request):
+            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -H %s" % disk)
+            output = commands.getoutput(cmd)
+            if not self._validate_output(request, output):
+                continue
+            test_result = re.findall(r"(?<=SMART overall-health self-assessment test result: )(\w+)\n", output)[0]
+            message += " %s=%s" % (disk, test_result)
+            if "PASSED" != test_result:
+                status_code = nagios.Status.CRITICAL
+        r = nagios.Result(request.type, status_code, message, request.appname)
+        return r
+
     @plugin.command("RAW_READ_ERROR_RATE")
     def getRawReadErrorRate(self, request):
         sub_perfs = self.get_status_value("1.VALUE", request)
@@ -71,7 +108,10 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, 'raw read error rate', request.appname)
         orig_crit = request.crit
         for disk in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
@@ -85,7 +125,10 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, 'spin up time', request.appname)
         orig_crit = request.crit
         for disk in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
@@ -99,7 +142,10 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, 'sector reallocation', request.appname)
         orig_crit = request.crit
         for disk in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
@@ -113,7 +159,10 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, 'spin retries', request.appname)
         orig_crit = request.crit
         for disk in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
@@ -126,8 +175,11 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         status_code = nagios.Status.OK
         r = nagios.Result(request.type, status_code, 'reallocated events', request.appname)
         orig_crit = request.crit
-        for disk, in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+        for disk in sub_perfs:
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
@@ -141,7 +193,10 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         r = nagios.Result(request.type, status_code, 'current pending sectors', request.appname);
         orig_crit = request.crit
         for disk in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
@@ -154,8 +209,11 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         status_code = nagios.Status.OK
         r = nagios.Result(request.type, status_code, 'offline correctability', request.appname)
         orig_crit = request.crit
-        for disk, in sub_perfs:
-            request.crit = orig_crit if orig_crit is None else thresh[disk]
+        for disk in sub_perfs:
+            if orig_crit:
+                request.crit = orig_crit
+            else:
+                request.crit = thresh[disk]
             status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
