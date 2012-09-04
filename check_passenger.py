@@ -18,8 +18,8 @@ class PassengerChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='passenger')
 
     def _get_batch_status(self, request):
-        # TODO: make sudo and path optional
-        cmd = "sudo /usr/bin/passenger-status"
+        # TODO: make path optional
+        cmd = nagios.rootify("/usr/bin/passenger-status")
         return commands.getoutput(cmd)
 
     def _parse_output(self, request, output):

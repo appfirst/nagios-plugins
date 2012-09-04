@@ -18,6 +18,14 @@ def to_num(v):
         except ValueError:
             return None
 
+def rootify(cmd):
+    if not cmd.startswith("sudo") \
+        and os.geteuid() != 0 \
+        and sys.stdout.isatty():
+        return "sudo %s" % cmd
+    else:
+        return cmd
+
 class Status(object):
     OK = 0
     WARNING = 1
