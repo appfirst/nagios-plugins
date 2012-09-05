@@ -47,11 +47,32 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                         attr = "%s.%s" % (fields[0], metric)
                         yield attr, value
 
+    def _map_disknum(self, disklist):
+        cmd = nagios.rootify("/usr/StorMan/arcconf getconfig 1")
+        output = commands.getoutput(cmd)
+        results = re.findall(r"Logical device number(?:.*\n)+?\n", output, re.M)
+        diskdict = {}
+        for (disk, result) in zip(disklist, results):
+            for diskid in re.findall(r"Present \(Controller:\d+,Connector:\d+,Device:(\d+)\)", result, re.M):
+                diskdict[diskid] = "%s-%s" % (disk, diskid)
+
+    def _detect_adaptec(self, disklist):
+        adaptec_disks = set()
+        for disk in disklist:
+            cmd = nagios.rootify("sudo /usr/sbin/smartctl -a %s" % disk)
+            output = commands.getoutput(cmd)
+            if re.search(r"Device: Adaptec\s+(\S+)", output):
+                adaptec_disks.add(disk)
+        return adaptec_disks;
+
     def retrieve_batch_status(self, request):
-        if request.raid == "adaptec":
-            return self._get_adaptec_status(request)
         stats = {}
-        for disk in self._get_disks(request):
+        disklist = self._get_disks(request)
+        if request.raid == "adaptec":
+            adaptec_disks = self._detect_adaptec(disklist)
+            disklist = filter(lambda d:d not in adaptec_disks, disklist)
+            stats.update(self._get_adaptec_status(request, list(adaptec_disks)))
+        for disk in disklist:
             cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
@@ -60,14 +81,15 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 stats.setdefault(attr, {})[disk] = value
         return stats
 
-    def _get_adaptec_status(self, request):
+    def _get_adaptec_status(self, request, disklist):
+        diskmap = self._map_disknum(disklist)
         stats = {}
         cmd = nagios.rootify("/usr/StorMan/arcconf getsmartstats 1")
         output = commands.getoutput(cmd)
         xml = output[output.index("<SmartStats"):output.index("</SmartStats>")+13]
         dom = parseString(xml)
         for disknode in dom.getElementsByTagName("PhysicalDriveSmartStats"):
-            disk = disknode.getAttribute("id")
+            disk = diskmap[disknode.getAttribute("id")]
             for attrnode in disknode.getElementsByTagName("Attribute"):
                 attrid = str(int(attrnode.getAttribute("id"), 16))
                 stats.setdefault(attrid + ".VALUE", {})[disk] = attrnode.getAttribute("normalizedCurrent")
