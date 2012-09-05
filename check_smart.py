@@ -47,31 +47,41 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                         attr = "%s.%s" % (fields[0], metric)
                         yield attr, value
 
-    def _map_disknum(self, disklist):
+    def _detect_adaptec(self, disklist):
+        # map disk name to disk mount path
+        adaptec_disks = {}
+        diskset = set(disklist)
+        for disk in diskset:
+            cmd = nagios.rootify("/usr/sbin/smartctl -a %s" % disk)
+            output = commands.getoutput(cmd)
+            results = re.findall(r"Device: Adaptec\s+(\S+)", output)
+            if len(results) == 1:
+                adaptec_disks[results[0]] = disk
+                disklist.remove(disk)
+
+        # map to disknum to disk name (with disknum)
         cmd = nagios.rootify("/usr/StorMan/arcconf getconfig 1")
         output = commands.getoutput(cmd)
         results = re.findall(r"Logical device number(?:.*\n)+?\n", output, re.M)
         diskdict = {}
-        for (disk, result) in zip(disklist, results):
-            for diskid in re.findall(r"Present \(Controller:\d+,Connector:\d+,Device:(\d+)\)", result, re.M):
-                diskdict[diskid] = "%s-%s" % (disk, diskid)
+        for result in results:
+            name = re.findall(r"Logical device name\s*:\s*(.*)", result)[0]
+            for diskid in re.findall(r"Present \(\D*\d+,[^)]*?(\d+)\)", result):
+                diskdict[diskid] = "%s-%s" % (adaptec_disks[name], diskid)
 
-    def _detect_adaptec(self, disklist):
-        adaptec_disks = set()
-        for disk in disklist:
-            cmd = nagios.rootify("sudo /usr/sbin/smartctl -a %s" % disk)
-            output = commands.getoutput(cmd)
-            if re.search(r"Device: Adaptec\s+(\S+)", output):
-                adaptec_disks.add(disk)
-        return adaptec_disks;
+        return diskdict;
 
     def retrieve_batch_status(self, request):
         stats = {}
         disklist = self._get_disks(request)
+
+        # load the SMART info of adaptec raid controller
         if request.raid == "adaptec":
-            adaptec_disks = self._detect_adaptec(disklist)
-            disklist = filter(lambda d:d not in adaptec_disks, disklist)
-            stats.update(self._get_adaptec_status(request, list(adaptec_disks)))
+            adaptec_diskdict = self._detect_adaptec(disklist)
+            if adaptec_diskdict:
+                stats.update(self._get_adaptec_status(request, adaptec_diskdict))
+
+        # load the SMART info of the rest disks.
         for disk in disklist:
             cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
             output = commands.getoutput(cmd)
@@ -81,15 +91,14 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 stats.setdefault(attr, {})[disk] = value
         return stats
 
-    def _get_adaptec_status(self, request, disklist):
-        diskmap = self._map_disknum(disklist)
+    def _get_adaptec_status(self, request, diskdict):
         stats = {}
         cmd = nagios.rootify("/usr/StorMan/arcconf getsmartstats 1")
         output = commands.getoutput(cmd)
         xml = output[output.index("<SmartStats"):output.index("</SmartStats>")+13]
         dom = parseString(xml)
         for disknode in dom.getElementsByTagName("PhysicalDriveSmartStats"):
-            disk = diskmap[disknode.getAttribute("id")]
+            disk = diskdict[disknode.getAttribute("id")]
             for attrnode in disknode.getElementsByTagName("Attribute"):
                 attrid = str(int(attrnode.getAttribute("id"), 16))
                 stats.setdefault(attrid + ".VALUE", {})[disk] = attrnode.getAttribute("normalizedCurrent")
@@ -111,7 +120,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         message = "overall test results"
         status_code = nagios.Status.OK
         for disk in self._get_disks(request):
-            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -H %s" % disk)
+            cmd = nagios.rootify("/usr/sbin/smartctl -H %s" % disk)
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
@@ -134,7 +143,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r
@@ -151,7 +160,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r
@@ -168,7 +177,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r
@@ -185,7 +194,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r
@@ -202,7 +211,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r
@@ -219,7 +228,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r
@@ -236,7 +245,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 request.crit = orig_crit
             else:
                 request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True)
+            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
             r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
         r.set_status_code(status_code)
         return r

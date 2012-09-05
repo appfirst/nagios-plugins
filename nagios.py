@@ -173,36 +173,49 @@ class BasePlugin(object):
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
-    def verdict(self, value, request, reverse=False):
-        # default verdict function
-        # ok   if value <  warn             crit
-        # warn if          warn <= value <  crit
-        # crit if          warn             crit <= value
-        # if warn and crit is not defined then it's OK.
-        if not reverse:
-            status_code = Status.UNKNOWN
-            if request.warn is not None and value < request.warn:
-                status_code = Status.OK
-            elif request.crit is not None and value >= request.crit:
-                status_code = Status.CRITICAL
-            elif request.warn is not None:
-                status_code = Status.WARNING
-            else:
-                status_code = Status.OK
+    def verdict(self, value, request, reverse=False, exclusive=False):
+        ''' @summary: default verdict function
+            @param exclusive:
+                if False, warn and crit indicates closed interval:
+                if True,  warn and crit indicates open   interval:
+            @param reverse:
+                if False, then ok if less    than warn
+                if True,  then ok if greater than warn
+            @return: status_code
+            @note:
+                Here's how it works to verdict with default parameters:
+                    ok     if value <  warn             crit
+                    warn   if          warn <= value <  crit
+                    crit   if          warn             crit <= value
+                if warn and crit is not defined then it's OK.
+
+                Table of Interval:
+                    <status> | <default> | <exclusive> | <reverse> | <excl/rev>
+                    ok       | (-&, w)   | (-&, w]     | ( w,+&)   | [ w,-&)
+                    warn     | [ w, c)   | ( w, c]     | ( c, w]   | [ c, w)
+                     crit    | [ c,+&)   | ( c,+&)     | (-&, c]   | (-&, c)
+        '''
+        status_code = Status.UNKNOWN
+        if   (request.warn is not None
+            and (  (not exclusive                          )
+                or (    exclusive and value == request.warn))
+            and (  (not reverse   and value <  request.warn)
+                or (    reverse   and value >  request.warn))):
+            status_code = Status.OK
+        elif (request.crit is not None
+            and (  (    exclusive                          )
+                or (not exclusive and value == request.warn))
+            and (  (not reverse   and value >  request.crit)
+                or (    reverse   and value <  request.crit))):
+            status_code = Status.CRITICAL
+        elif request.warn is not None:
+            status_code = Status.WARNING
         else:
-            status_code = Status.UNKNOWN
-            if request.warn is not None and value > request.warn:
-                status_code = Status.OK
-            elif request.crit is not None and value <= request.crit:
-                status_code = Status.CRITICAL
-            elif request.warn is not None:
-                status_code = Status.WARNING
-            else:
-                status_code = Status.OK
+            status_code = Status.OK
         return status_code
 
-    def superimpose(self, status_code, value, request, reverse=False):
-        sc = self.verdict(value, request, reverse)
+    def superimpose(self, status_code, value, request, reverse=False, exclusive=False):
+        sc = self.verdict(value, request, reverse, exclusive)
         if sc == Status.WARNING and status_code == Status.OK:
             status_code = Status.WARNING
         elif sc == Status.CRITICAL:
