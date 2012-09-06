@@ -7,6 +7,7 @@ Created on Aug 27, 2012
 import commands
 import nagios
 import re
+import time
 from xml.dom.minidom import parseString
 from nagios import CommandBasedPlugin as plugin
 
@@ -17,6 +18,9 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='smart')
         self.parser.add_argument("-D", "--disk",     required=False, type=str)
         self.parser.add_argument("-r", "--raid",     required=False, type=str, choices=["adaptec"])
+        #the interval (by sec) indicates how often this program will fetch smart info
+        #if queried more frequently, it returns merely the last fetched info
+        self.parser.add_argument("-i", "--interval", required=False, type=int, default=300)
 
     def _get_disks(self, request):
         if request.disk:
@@ -108,7 +112,12 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def get_status_value(self, attr, request):
         if not hasattr(self, "stats") or self.stats is None:
-            self.stats = self.retrieve_batch_status(request)
+            self.stats = self.retrieve_last_status(request)
+        if ("fetchtime" not in self.stats
+           or int(time.time()) - self.stats["fetchtime"] > request.interval):
+                self.stats = self.retrieve_batch_status(request)
+                self.stats["fetchtime"] = int(time.time())
+                self.save_status(request, self.stats)
         if attr not in self.stats:
             raise nagios.StatusUnknownError(request)
         else:
@@ -134,121 +143,57 @@ class SMARTChecker(nagios.BatchStatusPlugin):
     @plugin.command("RAW_READ_ERROR_RATE")
     def getRawReadErrorRate(self, request):
         sub_perfs = self.get_status_value("1.VALUE", request)
-        thresh = self.get_status_value("1.THRESH", request)
-        status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'raw read error rate', request.appname)
-        orig_crit = request.crit
-        for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
-        r.set_status_code(status_code)
-        return r
+        thresholds = self.get_status_value("1.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'raw read error rate')
 
     @plugin.command("SPIN_UP_TIME")
     def getSpinUpTime(self, request):
         sub_perfs = self.get_status_value("3.VALUE", request)
-        thresh = self.get_status_value("3.THRESH", request)
-        status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'spin up time', request.appname)
-        orig_crit = request.crit
-        for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
-        r.set_status_code(status_code)
-        return r
+        thresholds = self.get_status_value("3.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'spin up time')
 
     @plugin.command("REALLOCATE_SECTOR_COUNT")
     def getReallocatedSectorCt(self, request):
         sub_perfs = self.get_status_value("5.VALUE", request)
-        thresh = self.get_status_value("5.THRESH", request)
-        status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'sector reallocation', request.appname)
-        orig_crit = request.crit
-        for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
-        r.set_status_code(status_code)
-        return r
+        thresholds = self.get_status_value("5.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'sector reallocation')
 
     @plugin.command("SPIN_RETRY_COUNT")
     def getSpinRetryCount(self, request):
         sub_perfs = self.get_status_value("10.VALUE", request)
-        thresh = self.get_status_value("10.THRESH", request)
-        status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'spin retries', request.appname)
-        orig_crit = request.crit
-        for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
-        r.set_status_code(status_code)
-        return r
+        thresholds = self.get_status_value("10.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'spin retries')
 
     @plugin.command("REALLOCATED_EVENT_COUNT")
     def getReallocatedEventCount(self, request):
         sub_perfs = self.get_status_value("196.VALUE", request)
-        thresh = self.get_status_value("196.THRESH", request)
-        status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'reallocated events', request.appname)
-        orig_crit = request.crit
-        for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
-        r.set_status_code(status_code)
-        return r
+        thresholds = self.get_status_value("196.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'reallocated events')
 
     @plugin.command("CUR_PENDING_SECTOR")
     def getCurrentPendingSector(self, request):
         sub_perfs = self.get_status_value("197.VALUE", request)
-        thresh = self.get_status_value("197.THRESH", request)
-        status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'current pending sectors', request.appname);
-        orig_crit = request.crit
-        for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
-        r.set_status_code(status_code)
-        return r
+        thresholds = self.get_status_value("197.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'current pending sectors')
 
     @plugin.command("OFFLINE_UNCORRECTABLE")
     def getOfflineUncorrectable(self, request):
         sub_perfs = self.get_status_value("198.VALUE", request)
-        thresh = self.get_status_value("198.THRESH", request)
+        thresholds = self.get_status_value("198.THRESH", request)
+        return self.get_result(request, sub_perfs, thresholds, 'offline correctability')
+
+    def get_result(self, request, sub_perfs, thresholds, message):
         status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, 'offline correctability', request.appname)
-        orig_crit = request.crit
+        r = nagios.Result(request.type, status_code, message, request.appname)
+        critical = request.crit
         for disk in sub_perfs:
-            if orig_crit:
-                request.crit = orig_crit
-            else:
-                request.crit = thresh[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=request.crit)
+            if not critical:
+                critical = thresholds[disk]
+            status_code = self.superimpose(status_code, sub_perfs[disk], request.warn, critical, reverse=True, exclusive=True)
+            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=critical)
         r.set_status_code(status_code)
         return r
+        
 
 if __name__ == "__main__":
     import sys
