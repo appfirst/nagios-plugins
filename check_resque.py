@@ -35,7 +35,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
                 v = self.run_query(request, query_pattern % q)
                 stats[q] = int(v)
                 total += stats[q]
-                sc = self.verdict(v, request)
+                sc = self.verdict(v, request.warn, request.crit)
                 if sc == nagios.Status.WARNING and status_code == nagios.Status.OK:
                     status_code = nagios.Status.WARNING
                 elif sc == nagios.Status.CRITICAL:

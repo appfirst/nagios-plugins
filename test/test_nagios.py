@@ -7,7 +7,6 @@ import unittest
 import nagios
 import sys
 from StringIO import StringIO
-import mock
 
 class BasePluginMock(nagios.BasePlugin):
     def check(self, request):
@@ -31,20 +30,12 @@ class TestBasePlugin(unittest.TestCase):
 
     def test_verdict(self):
         ba = BasePluginMock()
-        request = mock.Mock()
-        request.warn = 6
-        request.crit = 8
-        self.assertEqual(ba.verdict(2, request), nagios.Status.OK)
 
-        request = mock.Mock()
-        request.warn = 5
-        request.crit = None
-        self.assertEqual(ba.verdict(2, request), nagios.Status.OK)
+        self.assertEqual(ba.verdict(2, 6, 8), nagios.Status.OK)
 
-        request = mock.Mock()
-        request.warn = None
-        request.crit = None
-        self.assertEqual(ba.verdict(2, request), nagios.Status.OK)
+        self.assertEqual(ba.verdict(2, 5, None), nagios.Status.OK)
+
+        self.assertEqual(ba.verdict(2, None, None), nagios.Status.OK)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.test_']

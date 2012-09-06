@@ -71,7 +71,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
-            status_code = self.superimpose(status_code, v, request)
+            status_code = self.superimpose(status_code, v, request.warn, request.crit)
 
         # build result
         r = nagios.Result(request.type, status_code, '%s row operations' % total, request.appname);
@@ -94,7 +94,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
-            status_code = self.superimpose(status_code, v, request)
+            status_code = self.superimpose(status_code, v, request.warn, request.crit)
 
         # build result
         r = nagios.Result(request.type, status_code, '%s transactions' % total, request.appname);
@@ -127,7 +127,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = float(self.get_delta_value(attr, request)) / 1024 /1024
             values.append(v)
             total += v
-            status_code = self.superimpose(status_code, v, request)
+            status_code = self.superimpose(status_code, v, request.warn, request.crit)
 
         # build result
         r = nagios.Result(request.type, status_code, '%sMB in total' % total, request.appname);
@@ -149,7 +149,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
             v = self.get_delta_value(attr, request)
             values.append(v)
             total += v
-            status_code = self.superimpose(status_code, v, request)
+            status_code = self.superimpose(status_code, v, request.warn, request.crit)
 
         # build result
         r = nagios.Result(request.type, status_code, '%s select' % total, request.appname);

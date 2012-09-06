@@ -19,9 +19,10 @@ def to_num(v):
             return None
 
 def rootify(cmd):
-    if not cmd.startswith("sudo") \
-        and os.geteuid() != 0 \
-        and sys.stdout.isatty():
+    if (not cmd.startswith("sudo")
+        and os.geteuid() != 0):
+#        and (   sys.stdout.isatty()) 
+#             or os.isatty(sys.stdin.fileno())):
         return "sudo %s" % cmd
     else:
         return cmd
@@ -173,7 +174,7 @@ class BasePlugin(object):
     def check(self, request):
         raise NotImplementedError('need to override BasePlugin.check in subclass')
 
-    def verdict(self, value, request, reverse=False, exclusive=False):
+    def verdict(self, value, warn, crit, reverse=False, exclusive=False):
         ''' @summary: default verdict function
             @param exclusive:
                 if False, warn and crit indicates closed interval:
@@ -190,32 +191,35 @@ class BasePlugin(object):
                 if warn and crit is not defined then it's OK.
 
                 Table of Interval:
-                    <status> | <default> | <exclusive> | <reverse> | <excl/rev>
-                    ok       | (-&, w)   | (-&, w]     | ( w,+&)   | [ w,-&)
-                    warn     | [ w, c)   | ( w, c]     | ( c, w]   | [ c, w)
-                     crit    | [ c,+&)   | ( c,+&)     | (-&, c]   | (-&, c)
+                                  ok       warn    crit
+                     default   (-oo, w)  [w, c)  [c, +oo)
+                     exclusive (-oo, w]  (w, c]  (c, +oo)
+
+                                  crit     warn    ok
+                     reverse   (-oo, c]  (c, w]  (w, +oo)
+                     excl/rev  (-oo, c)  [c, w)  [w, +oo)
         '''
         status_code = Status.UNKNOWN
-        if   (request.warn is not None
+        if   (warn is not None
             and (  (not exclusive                          )
-                or (    exclusive and value == request.warn))
-            and (  (not reverse   and value <  request.warn)
-                or (    reverse   and value >  request.warn))):
+                or (    exclusive and value == warn))
+            and (  (not reverse   and value <  warn)
+                or (    reverse   and value >  warn))):
             status_code = Status.OK
-        elif (request.crit is not None
+        elif (crit is not None
             and (  (    exclusive                          )
-                or (not exclusive and value == request.warn))
-            and (  (not reverse   and value >  request.crit)
-                or (    reverse   and value <  request.crit))):
+                or (not exclusive and value == warn))
+            and (  (not reverse   and value >  crit)
+                or (    reverse   and value <  crit))):
             status_code = Status.CRITICAL
-        elif request.warn is not None:
+        elif warn is not None:
             status_code = Status.WARNING
         else:
             status_code = Status.OK
         return status_code
 
-    def superimpose(self, status_code, value, request, reverse=False, exclusive=False):
-        sc = self.verdict(value, request, reverse, exclusive)
+    def superimpose(self, status_code, value, warn, crit, reverse=False, exclusive=False):
+        sc = self.verdict(value, warn, crit, reverse, exclusive)
         if sc == Status.WARNING and status_code == Status.OK:
             status_code = Status.WARNING
         elif sc == Status.CRITICAL:
@@ -327,7 +331,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
     # optionally with some sub_performance value and the Units Of Measurement
     # sub_perfs = [ (pfname, pfvalue), ... ]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
-        status_code = self.verdict(value, request)
+        status_code = self.verdict(value, request.warn, request.crit)
         r = Result(request.type, status_code, message, request.appname);
         if value is not None:
             r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
