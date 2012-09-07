@@ -220,10 +220,8 @@ class BasePlugin(object):
 
     def superimpose(self, status_code, value, warn, crit, reverse=False, exclusive=False):
         sc = self.verdict(value, warn, crit, reverse, exclusive)
-        if sc == Status.WARNING and status_code == Status.OK:
-            status_code = Status.WARNING
-        elif sc == Status.CRITICAL:
-            status_code = Status.CRITICAL
+        if status_code < sc:
+            status_code = sc
         return status_code
 
 class CommandBasedPlugin(BasePlugin):

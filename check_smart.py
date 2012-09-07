@@ -11,6 +11,13 @@ import time
 from xml.dom.minidom import parseString
 from nagios import CommandBasedPlugin as plugin
 
+class SMARTAttribute(object):
+    def __init__(self):
+        self.value = None
+        self.threshold = None
+        self.worst = None
+        self.raw_value = None
+
 class SMARTChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(SMARTChecker, self).__init__(*args, **kwargs)
@@ -32,7 +39,8 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         return disklist
 
     def _validate_output(self, request, output):
-        if "=== START OF READ SMART DATA SECTION ===" in output:
+        if ("=== START OF READ SMART DATA SECTION ===" in output
+            or "SMART Health Status" in output):
             return True
         elif "Smartctl open device:" in output and "failed: No such device" in output:
             return False
@@ -47,9 +55,17 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 if fields[0] == "ID#":
                     metricset = fields
                 if fields[0].isdigit() and len(fields) == len(metricset):
+                    attribute = SMARTAttribute()
                     for metric, value in zip(metricset[2:], fields[2:]):
-                        attr = "%s.%s" % (fields[0], metric)
-                        yield attr, value
+                        if metric == "VALUE":
+                            attribute.value = value
+                        elif metric == "THRESH":
+                            attribute.threshold = value
+                        elif metric == "WORST":
+                            attribute.worst = value
+                        elif metric == "RAW_VALUE":
+                            attribute.raw_value = value
+                    yield fields[0], attribute
 
     def _detect_adaptec(self, disklist):
         # map disk name to disk mount path
@@ -75,28 +91,11 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
         return diskdict;
 
-    def retrieve_batch_status(self, request):
+    def retrieve_adaptec_status(self, request, disklist):
         stats = {}
-        disklist = self._get_disks(request)
-
-        # load the SMART info of adaptec raid controller
-        if request.raid == "adaptec":
-            adaptec_diskdict = self._detect_adaptec(disklist)
-            if adaptec_diskdict:
-                stats.update(self._get_adaptec_status(request, adaptec_diskdict))
-
-        # load the SMART info of the rest disks.
-        for disk in disklist:
-            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
-            output = commands.getoutput(cmd)
-            if not self._validate_output(request, output):
-                continue
-            for attr, value in self._parse_output(request, output):
-                stats.setdefault(attr, {})[disk] = value
-        return stats
-
-    def _get_adaptec_status(self, request, diskdict):
-        stats = {}
+        diskdict = self._detect_adaptec(disklist)
+        if not diskdict:
+            return stats
         cmd = nagios.rootify("/usr/StorMan/arcconf getsmartstats 1")
         output = commands.getoutput(cmd)
         xml = output[output.index("<SmartStats"):output.index("</SmartStats>")+13]
@@ -104,10 +103,30 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         for disknode in dom.getElementsByTagName("PhysicalDriveSmartStats"):
             disk = diskdict[disknode.getAttribute("id")]
             for attrnode in disknode.getElementsByTagName("Attribute"):
+                attribute = SMARTAttribute()
+                attribute.value = attrnode.getAttribute("normalizedCurrent")
+                attribute.worst = attrnode.getAttribute("normalizedWorst")
+                attribute.raw_value = attrnode.getAttribute("rawValue")
                 attrid = str(int(attrnode.getAttribute("id"), 16))
-                stats.setdefault(attrid + ".VALUE", {})[disk] = attrnode.getAttribute("normalizedCurrent")
-                stats.setdefault(attrid + ".THRESH", {})[disk] = attrnode.getAttribute("normalizedWorst")
-                stats.setdefault(attrid + ".RAW_VALUE", {})[disk] = attrnode.getAttribute("rawValue")
+                stats.setdefault(attrid, {})[disk] = attribute
+        return stats
+
+    def retrieve_batch_status(self, request):
+        disklist = self._get_disks(request)
+        stats = {}
+
+        # load the SMART info of adaptec raid controller
+        if request.raid == "adaptec":
+            stats.update(self.retrieve_adaptec_status(request, disklist))
+
+        # load the SMART info of the rest disks.
+        for disk in disklist:
+            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
+            output = commands.getoutput(cmd)
+            if not self._validate_output(request, output):
+                continue
+            for attrid, attribute in self._parse_output(request, output):
+                stats.setdefault(attrid, {})[disk] = attribute
         return stats
 
     def get_status_value(self, attr, request):
@@ -126,74 +145,139 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     @plugin.command("OVERALL_HEALTH")
     def getOverallHealth(self, request):
+        disklist = self._get_disks(request)
+
+        # load the SMART info of adaptec raid controller
+        status_code, message = self.checkHealthStatus(request, disklist)
+        r = nagios.Result(request.type, status_code, message, request.appname)
+        return r
+
+    def checkHealthStatus(self, request, disklist):
         message = "overall test results"
         status_code = nagios.Status.OK
-        for disk in self._get_disks(request):
+        for disk in disklist:
             cmd = nagios.rootify("/usr/sbin/smartctl -H %s" % disk)
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
-            test_result = re.findall(r"(?<=SMART overall-health self-assessment test result: )(\w+)\n", output)[0]
-            message += " %s=%s" % (disk, test_result)
-            if "PASSED" != test_result:
+            test_result = re.findall(r"(?<=SMART overall-health self-assessment test result: )(\w+)$", output)
+            if not test_result:
+                test_result = re.findall(r"(?<=SMART Health Status: )(\w+)", output)
+            if not test_result:
+                continue
+            message += " %s=%s" % (disk, test_result[0])
+            if test_result[0] != "PASSED" and test_result[0] != "OK":
                 status_code = nagios.Status.CRITICAL
+        return status_code, message
+
+    def checkAllAttribute(self, request, disklist):
+        if not hasattr(self, "stats") or self.stats is None:
+            stats = self.retrieve_last_status(request)
+        if ("fetchtime" not in stats
+           or int(time.time()) - stats["fetchtime"] > request.interval):
+                stats = self.retrieve_batch_status(request)
+                stats["fetchtime"] = int(time.time())
+                self.save_status(request, stats)
+        diskstats = {}
+        status_code = nagios.Status.OK
+        critical = request.crit
+        message = "overall health "
+        for diskattr in stats.itervalues():
+            for disk, attribute in diskattr.iteritems():
+                disk_status_code = diskstats.setdefault(disk, nagios.Status.OK)
+                if not critical:
+                    critical = attribute.threshold
+                disk_status_code = self.superimpose(disk_status_code, attribute.value, request.warn, critical,
+                                 reverse=True, exclusive=True)
+                if status_code < disk_status_code:
+                    status_code = disk_status_code
+                diskstats[disk] = disk_status_code
+        if status_code > nagios.Status.OK:
+            message += nagios.Status.to_status(status_code)
+        for disk, stat in diskstats.iteritems():
+            if stat > nagios.Status.OK:
+                message += " disk %s status %s" % (disk, stat)
+        return status_code, message
+
+    @plugin.command("ADAPTEC_HEALTH")
+    def getAdaptecHealth(self, request):
+        disklist = self._get_disks(request)
+        diskdict = self._detect_adaptec(disklist)
+        message = ""
+        cmd = nagios.rootify("/usr/StorMan/arcconf getlogs 1 stats")
+        output = commands.getoutput(cmd)
+        xml = output[output.index("<ControllerLog"):output.index("</ControllerLog>")+16]
+        dom = parseString(xml)
+        status_code = nagios.Status.OK
+        if not request.warn:
+            warn = 1
+        else:
+            warn = request.warn
+
+        sub_perfs = []
+        for statsnodee in dom.getElementsByTagName("physicaldrivestats"):
+            value = int(statsnodee.getAttribute("smartWarnCnt"))
+            disk = diskdict[statsnodee.getAttribute("id")]
+            if value > 0:
+                if message == "":
+                    message = "smart warnings:"
+                message += " %s=%s" % (disk, value)
+            status_code = self.superimpose(status_code, value, warn, request.crit)
+            sub_perfs.append((disk, value))
+
+        if message == "":
+            message = "no smart warning"
         r = nagios.Result(request.type, status_code, message, request.appname)
+        for disk, value in sub_perfs:
+            r.add_performance_data(disk, value, warn=warn, crit=request.crit)
         return r
 
     @plugin.command("RAW_READ_ERROR_RATE")
     def getRawReadErrorRate(self, request):
-        sub_perfs = self.get_status_value("1.VALUE", request)
-        thresholds = self.get_status_value("1.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'raw read error rate')
+        sub_perfs = self.get_status_value("1", request)
+        return self.get_result(request, sub_perfs, 'raw read error rate')
 
     @plugin.command("SPIN_UP_TIME")
     def getSpinUpTime(self, request):
-        sub_perfs = self.get_status_value("3.VALUE", request)
-        thresholds = self.get_status_value("3.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'spin up time')
+        sub_perfs = self.get_status_value("3", request)
+        return self.get_result(request, sub_perfs, 'spin up time')
 
     @plugin.command("REALLOCATE_SECTOR_COUNT")
     def getReallocatedSectorCt(self, request):
-        sub_perfs = self.get_status_value("5.VALUE", request)
-        thresholds = self.get_status_value("5.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'sector reallocation')
+        sub_perfs = self.get_status_value("5", request)
+        return self.get_result(request, sub_perfs, 'sector reallocation')
 
     @plugin.command("SPIN_RETRY_COUNT")
     def getSpinRetryCount(self, request):
-        sub_perfs = self.get_status_value("10.VALUE", request)
-        thresholds = self.get_status_value("10.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'spin retries')
+        sub_perfs = self.get_status_value("10", request)
+        return self.get_result(request, sub_perfs, 'spin retries')
 
     @plugin.command("REALLOCATED_EVENT_COUNT")
     def getReallocatedEventCount(self, request):
-        sub_perfs = self.get_status_value("196.VALUE", request)
-        thresholds = self.get_status_value("196.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'reallocated events')
+        sub_perfs = self.get_status_value("196", request)
+        return self.get_result(request, sub_perfs, 'reallocated events')
 
     @plugin.command("CUR_PENDING_SECTOR")
     def getCurrentPendingSector(self, request):
-        sub_perfs = self.get_status_value("197.VALUE", request)
-        thresholds = self.get_status_value("197.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'current pending sectors')
+        sub_perfs = self.get_status_value("197", request)
+        return self.get_result(request, sub_perfs, 'current pending sectors')
 
     @plugin.command("OFFLINE_UNCORRECTABLE")
     def getOfflineUncorrectable(self, request):
-        sub_perfs = self.get_status_value("198.VALUE", request)
-        thresholds = self.get_status_value("198.THRESH", request)
-        return self.get_result(request, sub_perfs, thresholds, 'offline correctability')
+        sub_perfs = self.get_status_value("198", request)
+        return self.get_result(request, sub_perfs, 'offline correctability')
 
-    def get_result(self, request, sub_perfs, thresholds, message):
+    def get_result(self, request, sub_perfs, message):
         status_code = nagios.Status.OK
         r = nagios.Result(request.type, status_code, message, request.appname)
         critical = request.crit
-        for disk in sub_perfs:
+        for disk, attribute in sub_perfs.iteritems():
             if not critical:
-                critical = thresholds[disk]
-            status_code = self.superimpose(status_code, sub_perfs[disk], request.warn, critical, reverse=True, exclusive=True)
-            r.add_performance_data(disk, sub_perfs[disk], warn=request.warn, crit=critical)
+                critical = attribute.threshold
+            status_code = self.superimpose(status_code, attribute.value, request.warn, critical, reverse=True)
+            r.add_performance_data(disk, attribute.value, warn=request.warn, crit=critical)
         r.set_status_code(status_code)
         return r
-        
 
 if __name__ == "__main__":
     import sys
