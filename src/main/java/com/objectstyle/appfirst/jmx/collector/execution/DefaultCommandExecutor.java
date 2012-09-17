@@ -18,6 +18,8 @@ import javax.management.*;
 import javax.management.openmbean.OpenMBeanAttributeInfo;
 import javax.management.openmbean.OpenType;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.google.common.collect.Collections2.transform;
 
@@ -127,15 +129,18 @@ public class DefaultCommandExecutor implements CommandExecutor {
         if (attributeInfo instanceof OpenMBeanAttributeInfo) {
             LOGGER.debug("Converting result from Open Type");
             return convertOpenMBeanData(((OpenMBeanAttributeInfo) attributeInfo).getOpenType(), value);
-        } else if (isPrimitiveType(attributeInfo.getType())) {
-            LOGGER.debug("Converting result from primitive type");
+        } else if (isPrimitiveOrWrapperType(attributeInfo.getType())) {
+            LOGGER.debug("Converting result from primitive: {}", attributeInfo.getType());
             return new SimpleResultData("val", value.toString());
         }
         throw new UnsupportedDataTypeException(attributeInfo.getType());
     }
 
-    private boolean isPrimitiveType(String type) {
-        return transform(Primitives.allPrimitiveTypes(), new Function<Class<?>, String>() {
+    private boolean isPrimitiveOrWrapperType(String type) {
+        Set<Class<?>> allTypes = new HashSet<Class<?>>();
+        allTypes.addAll(Primitives.allPrimitiveTypes());
+        allTypes.addAll(Primitives.allWrapperTypes());
+        return transform(allTypes, new Function<Class<?>, String>() {
             @Override
             public String apply(Class<?> input) {
                 return input.getName();
