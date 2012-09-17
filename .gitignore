@@ -1,5 +1,10 @@
 target/*
+sample/
+status/
 .classpath
 .project
+.pydevproject
 .settings/
 jmx-collector.log
+jmx-collector/bin/
+jmx-collector/target/
