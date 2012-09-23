@@ -23,8 +23,6 @@ class RedisChecker(nagios.BatchStatusPlugin):
 
     def _get_batch_status(self, request):
         cmd = "redis-cli --raw"
-        if request.user:
-            cmd = "sudo -u %s " % request.user + cmd
         if request.password:
             cmd += " -a %s" % request.password
         if request.database:
@@ -34,6 +32,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         if request.port:
             cmd += " -p %s" % request.port
         cmd += " info"
+        nagios.rootify(cmd, request.user)
         return commands.getoutput(cmd)
 
     def _parse_output(self, request, output):

@@ -65,8 +65,6 @@ class ResqueChecker(nagios.BatchStatusPlugin):
 
     def run_query(self, request, query):
         cmd_template = "redis-cli --raw"
-        if request.user is not None:
-            cmd_template = "sudo -u %s " % request.user + cmd_template
         if request.password is not None:
             cmd_template += " -a %s" % request.password
         if request.database is not None:
@@ -76,6 +74,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         if request.port is not None:
             cmd_template += " -p %s" % request.port
         cmd = "%s %s" % (cmd_template, query)
+        nagios.rootify(cmd, request.user)
         output = commands.getoutput(cmd)
         if "command not found" in output:
             raise nagios.ServiceInaccessibleError(request, output)

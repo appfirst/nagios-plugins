@@ -180,12 +180,11 @@ class PostgresChecker(nagios.BatchStatusPlugin):
 
     def _get_query_status(self, query, request):
         cmd_template = "psql"
-        if request.user is not None:
-            cmd_template = "sudo -u %s " % request.user + cmd_template
         if request.port is not None:
             cmd_template += " -p %s" % request.port
         cmd_template += " -wAtc \"%s\""
         cmd = cmd_template % query
+        nagios.rootify(cmd, request.user)
         return commands.getoutput(cmd)
 
     def _validate_output(self, request, output):

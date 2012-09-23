@@ -3,7 +3,7 @@ Created on May 29, 2012
 
 @author: Yangming
 '''
-import argparse, sys, os, pickle
+import argparse, sys, os, pickle, string
 from exceptions import Exception
 
 def BtoMB(bs):
@@ -18,14 +18,22 @@ def to_num(v):
         except ValueError:
             return None
 
-def rootify(cmd):
-    if (not cmd.startswith("sudo")
-        and os.geteuid() != 0):
-#        and (   sys.stdout.isatty()) 
-#             or os.isatty(sys.stdin.fileno())):
-        return "sudo %s" % cmd
-    else:
+def rootify(cmd, user=None):
+    if os.geteuid() == 0:
+        if user:
+            cmd = cmd.replace("\"", "\\\"")
+            options = "-l %s" % user
+            return "su %s -c \"%s\"" % (options, cmd)
+        else:
+            return cmd
+    elif cmd.startswith("sudo") and user:
+        return cmd.replace("sudo", "sudo -u %s" % user)
+    elif cmd.startswith("sudo"):
         return cmd
+    elif user:
+        return "sudo -u %s %s" % (user, cmd)
+    else:
+        return "sudo %s" % cmd
 
 class Status(object):
     OK = 0
@@ -90,7 +98,7 @@ class Result(object):
             output += ' |'
         for pd in self.perf_data_list:
             output += self._get_perfdata_output(pd)
-        return output
+        return filter(lambda x: x in string.printable, unicode(output))
 
     def _get_perfdata_output(self, perfdata):
         pdline = " %s=%s" % (perfdata["label"], perfdata["value"])
