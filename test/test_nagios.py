@@ -5,12 +5,59 @@ Created on May 30, 2012
 '''
 import unittest
 import nagios
+import statsd
 import sys
 from StringIO import StringIO
+import mock
 
 class BasePluginMock(nagios.BasePlugin):
     def check(self, request):
         pass
+
+class TestNagios(unittest.TestCase):
+    def test_rootify(self):
+        mock_os = mock.Mock()
+#        sys.modules['os'] = mock_os
+        nagios.__dict__['os'] = mock_os
+        mock_os.geteuid.return_value = 1
+        self.assertEqual("sudo ls", nagios.rootify("ls"))
+        self.assertEqual("sudo ls", nagios.rootify("sudo ls"))
+        self.assertEqual("sudo -u appfirst ls", nagios.rootify("ls", "appfirst"))
+        self.assertEqual("sudo -u appfirst ls", nagios.rootify("sudo ls", "appfirst"))
+        mock_os.geteuid.return_value = 0
+        self.assertEqual("echo \"rosie\"", nagios.rootify("echo \"rosie\""))
+        self.assertEqual("sudo echo \"rosie\"", nagios.rootify("sudo echo \"rosie\""))
+        self.assertEqual("su -l appfirst -c \"echo \\\"rosie\\\"\"", nagios.rootify("echo \"rosie\"", "appfirst"))
+
+
+class TestStatsd(unittest.TestCase):
+    def statsd_decorator(self, method):
+        self.assertTrue(method is not None, "empty method returned")
+        return method;
+
+    def test_statsd_gauge(self):
+        @self.statsd_decorator
+        @statsd.gauge
+        def testfunc1(*args, **kwargs):
+            result =  nagios.Result("GAUGE_COMMAND", nagios.Status.OK)
+            result.add_performance_data("total", 10)
+            return result
+
+    def test_statsd_counter(self):
+        @self.statsd_decorator
+        @statsd.counter
+        def testfunc2(*arg, **kwargs):
+            result =  nagios.Result("COUNTER_COMMAND", nagios.Status.OK)
+            result.add_performance_data("total", 10)
+            return result
+
+    def test_statsd_timer(self):
+        @self.statsd_decorator
+        @statsd.timer
+        def testfunc3(*arg, **kwargs):
+            result =  nagios.Result("TIMER_COMMAND", nagios.Status.OK)
+            result.add_performance_data("total", 10)
+            return result
 
 class TestBasePlugin(unittest.TestCase):
     def setUp(self):

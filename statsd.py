@@ -39,7 +39,10 @@ def timer(method):
             value = result.perf_data_list[0]['value']
             Statsd.timing(bucket, value, message=result.status)
         return result
-    return send_statsd if Statsd else method
+    if Statsd:
+        return send_statsd
+    else:
+        return method
 
 def counter(method):
     def send_statsd(*args, **kwargs):
@@ -50,7 +53,10 @@ def counter(method):
             value = result.perf_data_list[0]['value']
             Statsd.update_stats(bucket, value, 1, result.status)
         return result
-    return send_statsd if Statsd else method
+    if Statsd:
+        return send_statsd
+    else:
+        return method
 
 def gauge(method):
     def send_statsd(*args, **kwargs):
@@ -61,7 +67,10 @@ def gauge(method):
             value = result.perf_data_list[0]['value']
             Statsd.gauge(bucket, value, message=result.status)
         return result
-    return send_statsd if Statsd else method
+    if Statsd:
+        return send_statsd
+    else:
+        return method
 
 if __name__ == "__main__":
     import nagios

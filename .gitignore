@@ -1,6 +1,7 @@
 target/*
 sample/
 status/
+.DS_Store
 .classpath
 .project
 .pydevproject
@@ -8,3 +9,4 @@ status/
 jmx-collector.log
 jmx-collector/bin/
 jmx-collector/target/
+*.pyc
