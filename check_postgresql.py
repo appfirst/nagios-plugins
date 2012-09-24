@@ -184,7 +184,8 @@ class PostgresChecker(nagios.BatchStatusPlugin):
             cmd_template += " -p %s" % request.port
         cmd_template += " -wAtc \"%s\""
         cmd = cmd_template % query
-        nagios.rootify(cmd, request.user)
+        if request.user:
+            cmd = nagios.rootify(cmd, request.user)
         return commands.getoutput(cmd)
 
     def _validate_output(self, request, output):

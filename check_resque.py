@@ -74,7 +74,8 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         if request.port is not None:
             cmd_template += " -p %s" % request.port
         cmd = "%s %s" % (cmd_template, query)
-        nagios.rootify(cmd, request.user)
+        if request.user:
+            cmd = nagios.rootify(cmd, request.user)
         output = commands.getoutput(cmd)
         if "command not found" in output:
             raise nagios.ServiceInaccessibleError(request, output)

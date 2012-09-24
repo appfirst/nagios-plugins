@@ -42,7 +42,16 @@ class MySqlChecker(nagios.BatchStatusPlugin):
                 yield k, value
 
     def _validate_output(self, request, output):
-        pass
+        if "command not found" in output or \
+            "Can't connect to MySQL server on" in output:
+            raise nagios.ServiceInaccessibleError(request, output)
+        elif "Access denied for user" in output:
+            raise nagios.AuthenticationFailedError(request, output)
+        elif "mysqladmin: connect to server at" in output:
+            raise nagios.OutputFormatError(request, output)
+        elif output.strip() == "":
+            return False
+        return True
 
     @plugin.command("QUERIES_PER_SECOND")
     @statsd.gauge

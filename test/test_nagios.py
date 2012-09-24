@@ -20,14 +20,15 @@ class TestNagios(unittest.TestCase):
 #        sys.modules['os'] = mock_os
         nagios.__dict__['os'] = mock_os
         mock_os.geteuid.return_value = 1
-        self.assertEqual("sudo ls", nagios.rootify("ls"))
-        self.assertEqual("sudo ls", nagios.rootify("sudo ls"))
+        self.assertEqual("sudo ls",             nagios.rootify("ls"))
+        self.assertEqual("sudo ls",             nagios.rootify("sudo ls"))
         self.assertEqual("sudo -u appfirst ls", nagios.rootify("ls", "appfirst"))
         self.assertEqual("sudo -u appfirst ls", nagios.rootify("sudo ls", "appfirst"))
         mock_os.geteuid.return_value = 0
-        self.assertEqual("echo \"rosie\"", nagios.rootify("echo \"rosie\""))
+        self.assertEqual("echo \"rosie\"",      nagios.rootify("echo \"rosie\""))
         self.assertEqual("sudo echo \"rosie\"", nagios.rootify("sudo echo \"rosie\""))
-        self.assertEqual("su -l appfirst -c \"echo \\\"rosie\\\"\"", nagios.rootify("echo \"rosie\"", "appfirst"))
+        self.assertEqual("su -l appfirst -c \"echo \\\"rosie\\\"\"", 
+                                                nagios.rootify("echo \"rosie\"", "appfirst"))
 
 
 class TestStatsd(unittest.TestCase):
@@ -68,21 +69,24 @@ class TestBasePlugin(unittest.TestCase):
         sys.stdout = self.original_stdout
 
     def test_result_str(self):
+        # a result w/out pf data
         r = nagios.Result('SLOW_QUERIES', nagios.Status.OK, '2 queries', 'MYSQL')
-        self.assertEqual(str(r), 'SLOW_QUERIES OK: 2 queries')
+        expected = 'SLOW_QUERIES OK: 2 queries'
+        self.assertEqual(expected, str(r))
+        # one performance data added
         r.add_performance_data('slow_queries', 2, warn=10, crit=20)
-        self.assertEqual(str(r), 'SLOW_QUERIES OK: 2 queries | slow_queries=2;10;20')
+        expected = 'SLOW_QUERIES OK: 2 queries | slow_queries=2;10;20'
+        self.assertEqual(expected, str(r))
+        # two performance data added
         r.add_performance_data('slow_queries_rate', 0.2, warn=0.5, crit=1)
-        self.assertEqual(str(r), 'SLOW_QUERIES OK: 2 queries | slow_queries=2;10;20 slow_queries_rate=0.2;0.5;1')
+        expected = 'SLOW_QUERIES OK: 2 queries | slow_queries=2;10;20 slow_queries_rate=0.2;0.5;1'
+        self.assertEqual(expected, str(r))
 
     def test_verdict(self):
         ba = BasePluginMock()
-
-        self.assertEqual(ba.verdict(2, 6, 8), nagios.Status.OK)
-
-        self.assertEqual(ba.verdict(2, 5, None), nagios.Status.OK)
-
-        self.assertEqual(ba.verdict(2, None, None), nagios.Status.OK)
+        self.assertEqual(nagios.Status.OK, ba.verdict(2, 6, 8))
+        self.assertEqual(nagios.Status.OK, ba.verdict(2, 5, None))
+        self.assertEqual(nagios.Status.OK, ba.verdict(2, None, None))
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.test_']

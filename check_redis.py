@@ -32,7 +32,8 @@ class RedisChecker(nagios.BatchStatusPlugin):
         if request.port:
             cmd += " -p %s" % request.port
         cmd += " info"
-        nagios.rootify(cmd, request.user)
+        if request.user:
+            cmd = nagios.rootify(cmd, request.user)
         return commands.getoutput(cmd)
 
     def _parse_output(self, request, output):

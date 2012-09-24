@@ -98,7 +98,8 @@ class Result(object):
             output += ' |'
         for pd in self.perf_data_list:
             output += self._get_perfdata_output(pd)
-        return filter(lambda x: x in string.printable, unicode(output))
+        uoutput = filter(lambda x: x in string.printable, unicode(output))
+        return uoutput
 
     def _get_perfdata_output(self, perfdata):
         pdline = " %s=%s" % (perfdata["label"], perfdata["value"])
