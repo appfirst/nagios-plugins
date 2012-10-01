@@ -1,0 +1,123 @@
+#! /bin/bash
+# /etc/init.d/jmxcollector
+#
+# on Ubuntu requires packages:
+# openjdk-7-jre AND openjdk-7-jdk 
+#
+# chkconfig: 2345 51 31
+# description: Start/stop/restart jmxcollector
+#
+BASEDIR=/usr/share/appfirst
+PRODIR=$BASEDIR/plugins/libexec/jmx-collector
+CONFDIR=$PRODIR/../../etc
+CONFILE=nrpe_appfirst.cfg
+DAEMON=com.objectstyle.appfirst.jmx.collector.Application
+
+# If you want to connect to a JVM that is not running as root
+# change this variable to the user name as needed.
+USER=root
+
+# NOTE:
+# You must have JAVA_HOME set. Prios as follows:
+# 1. hardcoded JAVA_HOME variable in this script 
+# overrides everything
+#
+# 2. JAVA_HOME defined in the config file overides any
+# environment variable. The form of a config element in the
+# config file is: env_command[JAVA_HOME]=pathname
+#
+# 3. An environment variable set using
+# % export JAVA_HOME=pathname
+#
+# 4. If nothing is set we try /usr/java/latest
+# This may not work, just taking a shot
+# if nothing else is available
+#
+
+#JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
+#JAVA_HOME=/usr/java/latest/
+
+if [ -e /etc/rc.d/init.d/functions ]
+then 
+    . /etc/rc.d/init.d/functions
+    failmsg=failure
+    warnmsg=warning
+    successmsg=success
+    status=status
+else
+    if [ -e /lib/lsb/init-functions ] 
+    then 
+	. /lib/lsb/init-functions
+	failmsg=log_failure_msg
+	warnmsg=log_warning_msg
+	successmsg=log_success_msg
+	status=/sbin/pidof
+    fi
+fi
+
+# The rc interface:
+case "$1" in
+  start)
+	if pgrep -f $DAEMON >> /dev/null
+	then 
+	    $failmsg "jmxcollector is already running"
+	    exit 0
+	fi
+
+	if grep jmx_command $CONFDIR/$CONFILE | grep -v "#" >> /dev/null
+	then
+	    if [ ! $JAVA_HOME ]
+	    then
+		jpath=`grep JAVA_HOME $CONFDIR/$CONFILE | cut -d \= -f 2`
+		if [ $jpath ]
+		then
+		    JAVA_HOME=$jpath
+		fi
+	    fi
+	    
+	    if [ ! $JAVA_HOME ]
+	    then
+		echo 'You do not have a JAVA_HOME enveronment variable'
+		echo 'We will try using JAVA_HOME=/usr/java/latest. It may or may not work for you. Please verify'
+		JAVA_HOME='/usr/java/latest'
+	    fi
+	    
+	    echo "Starting jmxcollector using JAVA_HOME=$JAVA_HOME"
+	    
+	    cd $PRODIR
+	    su -s /bin/sh $USER -c "LD_LIBRARY_PATH=$BASEDIR ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.3-jar-with-dependencies.jar:appfirst-jmx-0.3.jar com.objectstyle.appfirst.jmx.collector.Application >/dev/null 2>>/dev/null &" 
+
+	    RETVAL=$?
+	    
+	    if pgrep -f $DAEMON >> /dev/null
+	    then 
+	    $successmsg "jmxcollector has started"
+	    else
+		$failmsg "jmxcollector failed to start"
+	    fi
+	fi
+	;;
+  stop)
+	if pgrep -f $DAEMON >> /dev/null
+	then
+	    echo "trying to stop $DAEMON"
+	    pkill -9 -f $DAEMON
+            RETVAL=$?
+	    while pgrep -f $DAEMON >> /dev/null
+	    do
+		sleep 1
+	    done
+	    $successmsg "jmxcollector has stopped"
+	fi
+	;;
+  restart)
+    $0 stop
+    $0 start $2
+    ;;
+  *)
+	$failmsg "Usage: /etc/init.d/afalert {start|stop|restart}"
+	exit 1
+	;;
+esac
+
+exit $RETVAL
