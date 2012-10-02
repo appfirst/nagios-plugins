@@ -77,7 +77,7 @@ case "$1" in
 	    
 	    if [ ! $JAVA_HOME ]
 	    then
-		echo 'You do not have a JAVA_HOME enveronment variable'
+		echo 'You do not have a JAVA_HOME environment variable'
 		echo 'We will try using JAVA_HOME=/usr/java/latest. It may or may not work for you. Please verify'
 		JAVA_HOME='/usr/java/latest'
 	    fi
@@ -110,12 +110,20 @@ case "$1" in
 	    $successmsg "jmxcollector has stopped"
 	fi
 	;;
+  status)
+	if pgrep -f $DAEMON >> /dev/null
+	then
+	    $successmsg "jmxcollector is running"
+	else
+	    $successmsg "jmxcollector is stopped"
+	fi
+	;;
   restart)
     $0 stop
     $0 start $2
     ;;
   *)
-	$failmsg "Usage: /etc/init.d/afalert {start|stop|restart}"
+	$failmsg "Usage: /etc/init.d/afalert {start|stop|restart|status}"
 	exit 1
 	;;
 esac
