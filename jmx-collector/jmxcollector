@@ -43,6 +43,7 @@ then
     failmsg=failure
     warnmsg=warning
     successmsg=success
+    infomsg=echo
     status=status
 else
     if [ -e /lib/lsb/init-functions ] 
@@ -51,6 +52,7 @@ else
 	failmsg=log_failure_msg
 	warnmsg=log_warning_msg
 	successmsg=log_success_msg
+    infomsg=echo
 	status=/sbin/pidof
     fi
 fi
@@ -68,39 +70,45 @@ case "$1" in
 	then
 	    if [ ! $JAVA_HOME ]
 	    then
-		jpath=`grep JAVA_HOME $CONFDIR/$CONFILE | cut -d \= -f 2`
-		if [ $jpath ]
-		then
-		    JAVA_HOME=$jpath
-		fi
-	    fi
-	    
-	    if [ ! $JAVA_HOME ]
-	    then
-		echo 'You do not have a JAVA_HOME environment variable'
-		echo 'We will try using JAVA_HOME=/usr/java/latest. It may or may not work for you. Please verify'
-		JAVA_HOME='/usr/java/latest'
-	    fi
-	    
-	    echo "Starting jmxcollector using JAVA_HOME=$JAVA_HOME"
-	    
-	    cd $PRODIR
-	    su -s /bin/sh $USER -c "LD_LIBRARY_PATH=$BASEDIR ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.3-jar-with-dependencies.jar:appfirst-jmx-0.3.jar com.objectstyle.appfirst.jmx.collector.Application >/dev/null 2>>/dev/null &" 
+            if grep env_command $CONFDIR/$CONFILE | grep -v "#" | grep JAVA_HOME >> /dev/null
+            then
+                JAVA_HOME=`grep env_command $CONFDIR/$CONFILE | grep -v "#" | grep JAVA_HOME | cut -d \= -f 2`
+            fi
+        fi
 
-	    RETVAL=$?
+        if grep env_command $CONFDIR/$CONFILE | grep -v "#" | grep JAVA_USER >> /dev/null
+        then
+            USER=`grep env_command $CONFDIR/$CONFILE | grep -v "#" | grep JAVA_USER | cut -d \= -f 2`
+        fi
+	
+        if [ ! $JAVA_HOME ]
+            then
+            $infomsg 'You do not have a JAVA_HOME environment variable'
+            $infomsg 'We will try using JAVA_HOME=/usr/java/latest. It may or may not work for you. Please verify'
+            JAVA_HOME='/usr/java/latest'
+        fi
 	    
-	    if pgrep -f $DAEMON >> /dev/null
-	    then 
-	    $successmsg "jmxcollector has started"
+        $infomsg "Starting jmxcollector using JAVA_HOME=$JAVA_HOME and USER=$USER"
+	    
+        cd $PRODIR
+        su -s /bin/sh $USER -c "LD_LIBRARY_PATH=$BASEDIR ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.3-jar-with-dependencies.jar:appfirst-jmx-0.3.jar com.objectstyle.appfirst.jmx.collector.Application >/dev/null 2>>/dev/null &" 
+
+        RETVAL=$?
+	    
+        if pgrep -f $DAEMON >> /dev/null
+            then 
+            $successmsg "jmxcollector has started"
 	    else
-		$failmsg "jmxcollector failed to start"
-	    fi
-	fi
+            $failmsg "jmxcollector failed to start"
+        fi
+    else
+        $infomsg "No JMX commands found, therefore not starting the JMX process"
+    fi
 	;;
   stop)
 	if pgrep -f $DAEMON >> /dev/null
 	then
-	    echo "trying to stop $DAEMON"
+	    $infomsg "trying to stop $DAEMON"
 	    pkill -9 -f $DAEMON
             RETVAL=$?
 	    while pgrep -f $DAEMON >> /dev/null
