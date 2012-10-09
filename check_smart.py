@@ -144,15 +144,15 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         return self.stats[attr];
 
     @plugin.command("OVERALL_HEALTH")
-    def getOverallHealth(self, request):
+    def get_overall_health(self, request):
         disklist = self._get_disks(request)
 
         # load the SMART info of adaptec raid controller
-        status_code, message = self.checkHealthStatus(request, disklist)
+        status_code, message = self.check_health_status(request, disklist)
         r = nagios.Result(request.type, status_code, message, request.appname)
         return r
 
-    def checkHealthStatus(self, request, disklist):
+    def check_health_status(self, request, disklist):
         message = "overall test results"
         status_code = nagios.Status.OK
         for disk in disklist:
@@ -170,7 +170,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 status_code = nagios.Status.CRITICAL
         return status_code, message
 
-    def checkAllAttribute(self, request, disklist):
+    def check_all_attribute(self, request, disklist):
         if not hasattr(self, "stats") or self.stats is None:
             stats = self.retrieve_last_status(request)
         if ("fetchtime" not in stats
@@ -200,7 +200,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         return status_code, message
 
     @plugin.command("ADAPTEC_HEALTH")
-    def getAdaptecHealth(self, request):
+    def get_adaptec_health(self, request):
         disklist = self._get_disks(request)
         diskdict = self._detect_adaptec(disklist)
         message = ""
@@ -233,37 +233,37 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         return r
 
     @plugin.command("RAW_READ_ERROR_RATE")
-    def getRawReadErrorRate(self, request):
+    def get_raw_read_error_rate(self, request):
         sub_perfs = self.get_status_value("1", request)
         return self.get_result(request, sub_perfs, 'raw read error rate')
 
     @plugin.command("SPIN_UP_TIME")
-    def getSpinUpTime(self, request):
+    def get_spin_up_time(self, request):
         sub_perfs = self.get_status_value("3", request)
         return self.get_result(request, sub_perfs, 'spin up time')
 
     @plugin.command("REALLOCATE_SECTOR_COUNT")
-    def getReallocatedSectorCt(self, request):
+    def get_reallocated_sector_ct(self, request):
         sub_perfs = self.get_status_value("5", request)
         return self.get_result(request, sub_perfs, 'sector reallocation')
 
     @plugin.command("SPIN_RETRY_COUNT")
-    def getSpinRetryCount(self, request):
+    def get_spin_retry_count(self, request):
         sub_perfs = self.get_status_value("10", request)
         return self.get_result(request, sub_perfs, 'spin retries')
 
     @plugin.command("REALLOCATED_EVENT_COUNT")
-    def getReallocatedEventCount(self, request):
+    def get_reallocated_event_count(self, request):
         sub_perfs = self.get_status_value("196", request)
         return self.get_result(request, sub_perfs, 'reallocated events')
 
     @plugin.command("CUR_PENDING_SECTOR")
-    def getCurrentPendingSector(self, request):
+    def get_current_pending_sector(self, request):
         sub_perfs = self.get_status_value("197", request)
         return self.get_result(request, sub_perfs, 'current pending sectors')
 
     @plugin.command("OFFLINE_UNCORRECTABLE")
-    def getOfflineUncorrectable(self, request):
+    def get_offline_uncorrectable(self, request):
         sub_perfs = self.get_status_value("198", request)
         return self.get_result(request, sub_perfs, 'offline correctability')
 
