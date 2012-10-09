@@ -109,13 +109,11 @@ class PingChecker(nagios.BasePlugin):
             status_code = self.verdict(p.lost_rate, request.warn, request.crit)
         msg = "Packet loss = %s %%, RTA = %.3f ms" % (p.lost_rate, p.rta)
 
-        print "traceroute"
         # save traceroute(request, tr_msg)
         if status_code > nagios.Status.OK:
             tr_msg = self.check_traceroute(request)
             self.save_output(request, tr_msg)
             msg += " " + tr_msg
-        print "done"
 
         # generate result
         r = nagios.Result("PING", status_code, msg, request.appname)
