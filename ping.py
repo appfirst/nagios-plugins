@@ -99,7 +99,7 @@ class Ping(object):
         try:
             # FIXME: Use destination only for display this line here? see: https://github.com/jedie/python-ping/issues/3
             self.dest_ip = to_ip(self.destination)
-        except socket.gaierror as e:
+        except socket.gaierror, e:
             self.print_unknown_host(e)
         else:
             self.print_start()
@@ -208,7 +208,7 @@ class Ping(object):
         """
         try: # One could use UDP here, but it's obscure
             current_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname("icmp"))
-        except socket.error, (errno, msg):
+        except socket.error, (errno, _):
             if errno == 1:
                 # Operation not permitted - Add more information to traceback
                 etype, evalue, etb = sys.exc_info()
@@ -256,7 +256,7 @@ class Ping(object):
         startVal = 0x42
         for i in range(startVal, startVal + (self.packet_size)):
             padBytes += [(i & 0xff)]  # Keep chars in the 0-255 range
-        data = bytes(padBytes)
+        data = str(padBytes)
 
         # Calculate the checksum on the data and the dummy header.
         checksum = calculate_checksum(header + data) # Checksum is in network order
@@ -273,7 +273,7 @@ class Ping(object):
 
         try:
             current_socket.sendto(packet, (self.destination, 1)) # Port number is irrelevant for ICMP
-        except socket.error as e:
+        except socket.error, e:
             print("General failure (%s)" % (e.args[1]))
             current_socket.close()
             return
