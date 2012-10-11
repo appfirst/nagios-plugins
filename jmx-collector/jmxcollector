@@ -94,15 +94,14 @@ case "$1" in
         su -s /bin/sh $USER -c "LD_LIBRARY_PATH=$BASEDIR ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.3-jar-with-dependencies.jar:appfirst-jmx-0.3.jar com.objectstyle.appfirst.jmx.collector.Application >/dev/null 2>>/dev/null &" 
 
         RETVAL=$?
-	    
+
+	    sleep(1)
         if pgrep -f $DAEMON >> /dev/null
             then 
             $successmsg "jmxcollector has started"
 	    else
             $failmsg "jmxcollector failed to start"
         fi
-    else
-        $infomsg "No JMX commands found, therefore not starting the JMX process"
     fi
 	;;
   stop)
