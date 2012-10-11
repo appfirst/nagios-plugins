@@ -4,7 +4,7 @@ Created on Aug 27, 2012
 
 @author: Yangming
 '''
-import commands
+import ucommands as commands
 import nagios
 import re
 import time
