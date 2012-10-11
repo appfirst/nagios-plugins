@@ -41,7 +41,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
                 elif sc == nagios.Status.CRITICAL:
                     status_code = nagios.Status.CRITICAL
 
-        r = nagios.Result(request.type, status_code, '%s jobs in queues' % total, request.appname);
+        r = nagios.Result(request.option, status_code, '%s jobs in queues' % total, request.appname);
         r.add_performance_data('total', total, warn=request.warn, crit=request.crit)
         for k, v in stats.iteritems():
             r.add_performance_data(k, v, warn=request.warn, crit=request.crit)

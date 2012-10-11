@@ -57,8 +57,8 @@ class Status(object):
         return status_code
 
 class Result(object):
-    def __init__(self, type, status_code, message="", appname="nagios"):
-        self.type = type.upper()
+    def __init__(self, name, status_code, message="", appname="nagios"):
+        self.name = name.upper()
         self.set_status_code(status_code)
         self.message = message
         self.appname = appname.lower()
@@ -79,8 +79,8 @@ class Result(object):
     def __getitem__(self, key):
         if key == "appname":
             return self.appname
-        elif key == "type":
-            return self.type.lower()
+        elif key == "name":
+            return self.name.lower()
         elif key == "status_code":
             return self.status_code
         elif key == "status":
@@ -93,7 +93,7 @@ class Result(object):
             raise KeyError(key)
 
     def __str__(self):
-        output = '%s %s: %s' % (self.type, self.status, self.message)
+        output = '%s %s: %s' % (self.name, self.status, self.message)
         if len(self.perf_data_list):
             output += ' |'
         for pd in self.perf_data_list:
@@ -118,7 +118,7 @@ class Result(object):
 class StatusUnknownError(Exception):
     def __init__(self, request, msg=None):
         self.appname = request.appname
-        self.status_type = request.type
+        self.status_type = request.option
         self.status = Status.UNKNOWN
         self.msg = msg or "failed to check status. check arguments and try again."
 
@@ -132,28 +132,28 @@ class StatusUnknownError(Exception):
 class MultipleInstancesError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
-        self.status_type = request.type
+        self.status_type = request.option
         self.status = Status.UNKNOWN
         self.msg = msg or "multiple instances found, specific the one you need."
 
 class ServiceInaccessibleError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
-        self.status_type = request.type
+        self.status_type = request.option
         self.status = Status.CRITICAL
         self.msg = msg or "service is not accessible."
 
 class AuthenticationFailedError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
-        self.status_type = request.type
+        self.status_type = request.option
         self.status = Status.UNKNOWN
         self.msg = msg or "authentication failed. please specific user and password"
 
 class OutputFormatError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
-        self.status_type = request.type
+        self.status_type = request.option
         self.status = Status.UNKNOWN
         self.msg = msg or "output format is not as expected."
 
@@ -248,15 +248,15 @@ class CommandBasedPlugin(BasePlugin):
                 if method in method2commands:
                     command_str = method2commands[method]
                     self.commands[command_str] = method
-        self.parser.add_argument("-t", "--type", required=True,
-                                 choices=self.commands.keys());
+        self.parser.add_argument("-t", "--option", required=True, choices=self.commands.keys(),
+            help="options for different metrics, used to be type, keep legacy -t option for existing cfg files");
 
     def check(self, request):
-        if request.type in self.commands and self.commands[request.type]:
-            result = self.commands[request.type](self, request)
+        if request.option in self.commands and self.commands[request.option]:
+            result = self.commands[request.option](self, request)
             if result:
                 return result
-        return Result(request.type, Status.UNKNOWN, "mysterious status", request.appname)
+        return Result(request.option, Status.UNKNOWN, "mysterious status", request.appname)
 
     @classmethod
     def command(cls, command_str):
@@ -339,7 +339,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
     # sub_perfs = [ (pfname, pfvalue), ... ]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
         status_code = self.verdict(value, request.warn, request.crit)
-        r = Result(request.type, status_code, message, request.appname);
+        r = Result(request.option, status_code, message, request.appname);
         if value is not None:
             r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
         for pfname, pfvalue in sub_perfs:

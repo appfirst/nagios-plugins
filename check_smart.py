@@ -149,7 +149,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
         # load the SMART info of adaptec raid controller
         status_code, message = self.check_health_status(request, disklist)
-        r = nagios.Result(request.type, status_code, message, request.appname)
+        r = nagios.Result(request.option, status_code, message, request.appname)
         return r
 
     def check_health_status(self, request, disklist):
@@ -227,7 +227,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
         if message == "":
             message = "no smart warning"
-        r = nagios.Result(request.type, status_code, message, request.appname)
+        r = nagios.Result(request.option, status_code, message, request.appname)
         for disk, value in sub_perfs:
             r.add_performance_data(disk, value, warn=warn, crit=request.crit)
         return r
@@ -269,7 +269,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def get_result(self, request, sub_perfs, message):
         status_code = nagios.Status.OK
-        r = nagios.Result(request.type, status_code, message, request.appname)
+        r = nagios.Result(request.option, status_code, message, request.appname)
         critical = request.crit
         for disk, attribute in sub_perfs.iteritems():
             if not critical:

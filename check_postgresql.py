@@ -47,7 +47,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
                 raise nagios.OutputFormatError(request, rows)
             return value
         else:
-            raise nagios.StatusUnknownError(request.type)
+            raise nagios.StatusUnknownError(request.option)
 
     @plugin.command("DATABASE_SIZE")
     @statsd.gauge

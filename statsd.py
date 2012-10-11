@@ -14,9 +14,9 @@ except:
     print "Statsd Library is not available, check PYTHON_PATH"
     Statsd = None
 
-TIMER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
-COUNTER_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
-GAUGE_BUCKET_PATTERN = "sys.app.%(appname)s.%(type)s"
+TIMER_BUCKET_PATTERN = "sys.app.%(appname)s.%(name)s"
+COUNTER_BUCKET_PATTERN = "sys.app.%(appname)s.%(name)s"
+GAUGE_BUCKET_PATTERN = "sys.app.%(appname)s.%(name)s"
 
 def set_timer_bucket_pattern(pattern):
     global TIMER_BUCKET_PATTERN
