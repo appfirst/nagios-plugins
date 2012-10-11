@@ -95,7 +95,7 @@ case "$1" in
 
         RETVAL=$?
 
-	    sleep(1)
+	    sleep 1
         if pgrep -f $DAEMON >> /dev/null
             then 
             $successmsg "jmxcollector has started"
