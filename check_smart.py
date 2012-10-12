@@ -25,6 +25,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='smart')
         self.parser.add_argument("-D", "--disk",     required=False, type=str)
         self.parser.add_argument("-r", "--raid",     required=False, type=str, choices=["adaptec"])
+        self.parser.add_argument("-p", "--path",     required=False, type=str, default="")
         #the interval (by sec) indicates how often this program will fetch smart info
         #if queried more frequently, it returns merely the last fetched info
         self.parser.add_argument("-i", "--interval", required=False, type=int, default=300)
@@ -33,10 +34,35 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         if request.disk:
             disklist = [request.disk]
         else:
-            cmd = nagios.rootify("/sbin/fdisk -l")
-            output = commands.getoutput(cmd)
-            disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
+            output = commands.getoutput(self._get_smartctl(request) + " --scan")
+            if self._validate_scan_output(request, output):
+                disklist = []
+                for line in output.split("\n"):
+                    if line:
+                        d = line.split("#")[0].strip()
+                        disklist.append(d)
+            elif sys.platform != "win32":
+                cmd = nagios.rootify("/sbin/fdisk -l")
+                output = commands.getoutput(cmd)
+                disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
+            else:
+                nagios.StatusUnknownError("Can't get disk list")
         return disklist
+
+    def _get_smartctl(self, request):
+        if sys.platform == "win32":
+            return "smartctl"
+        else:
+            return nagios.rootify(request.path + "smartctl")
+
+    def _validate_scan_output(self, request, output):
+        if ("is not recognized as an internal or external command" in output
+            or "No such file or directory" in output):
+            raise nagios.StatusUnknownError(request, output)
+        if ("=======> UNRECOGNIZED OPTION: scan" in output):
+            return False
+        else:
+            return True
 
     def _validate_output(self, request, output):
         if ("=== START OF READ SMART DATA SECTION ===" in output
@@ -121,7 +147,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
         # load the SMART info of the rest disks.
         for disk in disklist:
-            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
+            cmd = nagios.rootify(self._get_smartctl(request) + (" -A %s" % disk))
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue

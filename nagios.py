@@ -19,21 +19,27 @@ def to_num(v):
             return None
 
 def rootify(cmd, user=None):
-    if os.geteuid() == 0:
-        if user:
-            cmd = cmd.replace("\"", "\\\"")
-            options = "-l %s" % user
-            return "su %s -c \"%s\"" % (options, cmd)
-        else:
-            return cmd
-    elif cmd.startswith("sudo") and user:
-        return cmd.replace("sudo", "sudo -u %s" % user)
-    elif cmd.startswith("sudo"):
+    if sys.platform == "win32":
+#        import ctypes
+#        if ctypes.windll.shell32.IsUserAnAdmin() != 0:
+#            cmd = 'runas /user:Administrator ' + cmd
         return cmd
-    elif user:
-        return "sudo -u %s %s" % (user, cmd)
     else:
-        return "sudo %s" % cmd
+        if os.geteuid() == 0:
+            if user:
+                cmd = cmd.replace("\"", "\\\"")
+                options = "-l %s" % user
+                return "su %s -c \"%s\"" % (options, cmd)
+            else:
+                return cmd
+        elif cmd.startswith("sudo") and user:
+            return cmd.replace("sudo", "sudo -u %s" % user)
+        elif cmd.startswith("sudo"):
+            return cmd
+        elif user:
+            return "sudo -u %s %s" % (user, cmd)
+        else:
+            return "sudo %s" % cmd
 
 class Status(object):
     OK = 0
@@ -310,6 +316,8 @@ class BatchStatusPlugin(CommandBasedPlugin):
         except pickle.PickleError:
             pass
         except EOFError:
+            pass
+        except IOError:
             pass
 
     # get the current reading
