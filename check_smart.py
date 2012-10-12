@@ -21,6 +21,8 @@ class SMARTAttribute(object):
 class SMARTChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(SMARTChecker, self).__init__(*args, **kwargs)
+        if sys.platform == "win32":
+            self.parser.set_defaults(rootdir="c:\\temp\\")
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@smartctl')
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='smart')
         self.parser.add_argument("-D", "--disk",     required=False, type=str)
