@@ -213,6 +213,8 @@ class BasePlugin(object):
                                   crit     warn    ok
                      reverse   (-oo, c]  (c, w]  (w, +oo)
                      excl/rev  (-oo, c)  [c, w)  [w, +oo)
+
+                NOTE: -oo means nagative infinite, +oo means positive infinite
         '''
         status_code = Status.UNKNOWN
         if   (warn is not None

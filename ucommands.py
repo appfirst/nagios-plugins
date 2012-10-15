@@ -15,7 +15,7 @@ def getstatusoutput(cmd):
     The exit status for the command can be interpreted according to the rules for the C function wait().
     '''
     try:
-        output = subprocess.check_output(cmd, shell=True)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         return 0, output
     except subprocess.CalledProcessError, e:
         return e.returncode, e.output
