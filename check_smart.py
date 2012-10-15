@@ -48,7 +48,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 output = commands.getoutput(cmd)
                 disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
             else:
-                nagios.StatusUnknownError("Can't get disk list")
+                nagios.StatusUnknownError(request, "Can't get disk list")
         return disklist
 
     def _get_smartctl(self, request):
@@ -59,10 +59,19 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def _validate_scan_output(self, request, output):
         if ("is not recognized as an internal or external command" in output
-            or "No such file or directory" in output):
+            or "No such file or directory" in output
+            or "command not found" in output):
             raise nagios.StatusUnknownError(request, output)
         if ("=======> UNRECOGNIZED OPTION: scan" in output):
             return False
+        else:
+            return True
+
+    def _validate_arcconf_output(self, request, output):
+        if ( not output
+            or "No such file or directory" in output
+            or "command not found" in output):
+            raise nagios.StatusUnknownError(request, "StorMan tool: arcconf is not available")
         else:
             return True
 
@@ -95,12 +104,12 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                             attribute.raw_value = value
                     yield fields[0], attribute
 
-    def _detect_adaptec(self, disklist):
+    def _detect_adaptec(self, disklist, request):
         # map disk name to disk mount path
         adaptec_disks = {}
         diskset = set(disklist)
         for disk in diskset:
-            cmd = nagios.rootify("/usr/sbin/smartctl -a %s" % disk)
+            cmd = nagios.rootify(self._get_smartctl(request) + " -a %s" % disk)
             output = commands.getoutput(cmd)
             results = re.findall(r"Device: Adaptec\s+(\S+)", output)
             if len(results) == 1:
@@ -110,6 +119,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         # map to disknum to disk name (with disknum)
         cmd = nagios.rootify("/usr/StorMan/arcconf getconfig 1")
         output = commands.getoutput(cmd)
+
         results = re.findall(r"Logical device number(?:.*\n)+?\n", output, re.M)
         diskdict = {}
         for result in results:
@@ -121,7 +131,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def retrieve_adaptec_status(self, request, disklist):
         stats = {}
-        diskdict = self._detect_adaptec(disklist)
+        diskdict = self._detect_adaptec(disklist, request)
         if not diskdict:
             return stats
         cmd = nagios.rootify("/usr/StorMan/arcconf getsmartstats 1")
@@ -184,7 +194,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         message = "overall test results"
         status_code = nagios.Status.OK
         for disk in disklist:
-            cmd = nagios.rootify("/usr/sbin/smartctl -H %s" % disk)
+            cmd = nagios.rootify(self._get_smartctl(request) + " -H %s" % disk)
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
@@ -229,11 +239,17 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     @plugin.command("ADAPTEC_HEALTH")
     def get_adaptec_health(self, request):
+        if sys.platform == "win32":
+            raise nagios.StatusUnknownError(request, "Only Adaptec on linux are supported at the moment.")
         disklist = self._get_disks(request)
-        diskdict = self._detect_adaptec(disklist)
+        diskdict = self._detect_adaptec(disklist, request)
+        if not diskdict:
+            raise nagios.StatusUnknownError(request, "No Adaptec Adaptec detected.")
         message = ""
         cmd = nagios.rootify("/usr/StorMan/arcconf getlogs 1 stats")
         output = commands.getoutput(cmd)
+        if not self._validate_arcconf_output(request, output):
+            return
         xml = output[output.index("<ControllerLog"):output.index("</ControllerLog>")+16]
         dom = parseString(xml)
         status_code = nagios.Status.OK

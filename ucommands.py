@@ -25,7 +25,8 @@ def getoutput(cmd):
     Like getstatusoutput(), except the exit status is ignored and the return value is a string containing the command output.
     '''
     try:
-        return subprocess.check_output(cmd, shell=True)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        return output
     except subprocess.CalledProcessError, e:
         return e.output
 
