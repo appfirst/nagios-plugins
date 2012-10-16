@@ -53,7 +53,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def _get_smartctl(self, request):
         if sys.platform == "win32":
-            return "smartctl"
+            return request.path + "smartctl"
         else:
             return nagios.rootify(request.path + "smartctl")
 
