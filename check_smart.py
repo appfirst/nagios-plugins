@@ -4,7 +4,7 @@ Created on Aug 27, 2012
 
 @author: Yangming
 '''
-import commands
+import ucommands as commands
 import nagios
 import re
 import time
@@ -21,10 +21,13 @@ class SMARTAttribute(object):
 class SMARTChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(SMARTChecker, self).__init__(*args, **kwargs)
+        if sys.platform == "win32":
+            self.parser.set_defaults(rootdir="c:\\temp\\")
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@smartctl')
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='smart')
         self.parser.add_argument("-D", "--disk",     required=False, type=str)
         self.parser.add_argument("-r", "--raid",     required=False, type=str, choices=["adaptec"])
+        self.parser.add_argument("-p", "--path",     required=False, type=str, default="")
         #the interval (by sec) indicates how often this program will fetch smart info
         #if queried more frequently, it returns merely the last fetched info
         self.parser.add_argument("-i", "--interval", required=False, type=int, default=300)
@@ -33,10 +36,44 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         if request.disk:
             disklist = [request.disk]
         else:
-            cmd = nagios.rootify("/sbin/fdisk -l")
-            output = commands.getoutput(cmd)
-            disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
+            output = commands.getoutput(self._get_smartctl(request) + " --scan")
+            if self._validate_scan_output(request, output):
+                disklist = []
+                for line in output.split("\n"):
+                    if line:
+                        d = line.split("#")[0].strip()
+                        disklist.append(d)
+            elif sys.platform != "win32":
+                cmd = nagios.rootify("/sbin/fdisk -l")
+                output = commands.getoutput(cmd)
+                disklist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
+            else:
+                nagios.StatusUnknownError(request, "Can't get disk list")
         return disklist
+
+    def _get_smartctl(self, request):
+        if sys.platform == "win32":
+            return "smartctl"
+        else:
+            return nagios.rootify(request.path + "smartctl")
+
+    def _validate_scan_output(self, request, output):
+        if ("is not recognized as an internal or external command" in output
+            or "No such file or directory" in output
+            or "command not found" in output):
+            raise nagios.StatusUnknownError(request, output)
+        if ("=======> UNRECOGNIZED OPTION: scan" in output):
+            return False
+        else:
+            return True
+
+    def _validate_arcconf_output(self, request, output):
+        if ( not output
+            or "No such file or directory" in output
+            or "command not found" in output):
+            raise nagios.StatusUnknownError(request, "StorMan tool: arcconf is not available")
+        else:
+            return True
 
     def _validate_output(self, request, output):
         if ("=== START OF READ SMART DATA SECTION ===" in output
@@ -67,12 +104,12 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                             attribute.raw_value = value
                     yield fields[0], attribute
 
-    def _detect_adaptec(self, disklist):
+    def _detect_adaptec(self, disklist, request):
         # map disk name to disk mount path
         adaptec_disks = {}
         diskset = set(disklist)
         for disk in diskset:
-            cmd = nagios.rootify("/usr/sbin/smartctl -a %s" % disk)
+            cmd = nagios.rootify(self._get_smartctl(request) + " -a %s" % disk)
             output = commands.getoutput(cmd)
             results = re.findall(r"Device: Adaptec\s+(\S+)", output)
             if len(results) == 1:
@@ -82,6 +119,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         # map to disknum to disk name (with disknum)
         cmd = nagios.rootify("/usr/StorMan/arcconf getconfig 1")
         output = commands.getoutput(cmd)
+
         results = re.findall(r"Logical device number(?:.*\n)+?\n", output, re.M)
         diskdict = {}
         for result in results:
@@ -93,7 +131,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def retrieve_adaptec_status(self, request, disklist):
         stats = {}
-        diskdict = self._detect_adaptec(disklist)
+        diskdict = self._detect_adaptec(disklist, request)
         if not diskdict:
             return stats
         cmd = nagios.rootify("/usr/StorMan/arcconf getsmartstats 1")
@@ -121,7 +159,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
         # load the SMART info of the rest disks.
         for disk in disklist:
-            cmd = nagios.rootify("/usr/sbin/smartctl -d sat -A %s" % disk)
+            cmd = nagios.rootify(self._get_smartctl(request) + (" -A %s" % disk))
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
@@ -156,7 +194,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         message = "overall test results"
         status_code = nagios.Status.OK
         for disk in disklist:
-            cmd = nagios.rootify("/usr/sbin/smartctl -H %s" % disk)
+            cmd = nagios.rootify(self._get_smartctl(request) + " -H %s" % disk)
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
@@ -201,11 +239,17 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     @plugin.command("ADAPTEC_HEALTH")
     def get_adaptec_health(self, request):
+        if sys.platform == "win32":
+            raise nagios.StatusUnknownError(request, "Only Adaptec on linux are supported at the moment.")
         disklist = self._get_disks(request)
-        diskdict = self._detect_adaptec(disklist)
+        diskdict = self._detect_adaptec(disklist, request)
+        if not diskdict:
+            raise nagios.StatusUnknownError(request, "No Adaptec Adaptec detected.")
         message = ""
         cmd = nagios.rootify("/usr/StorMan/arcconf getlogs 1 stats")
         output = commands.getoutput(cmd)
+        if not self._validate_arcconf_output(request, output):
+            return
         xml = output[output.index("<ControllerLog"):output.index("</ControllerLog>")+16]
         dom = parseString(xml)
         status_code = nagios.Status.OK
