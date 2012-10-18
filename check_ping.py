@@ -1,7 +1,7 @@
 '''
 Created on Oct 8, 2012
 
-@author: appfirst
+@author: Yangming
 '''
 import os
 import commands
