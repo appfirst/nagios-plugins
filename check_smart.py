@@ -10,17 +10,18 @@ import re
 import time
 from xml.dom.minidom import parseString
 from nagios import CommandBasedPlugin as plugin
+import sys
 
-class SMARTAttribute(object):
+class SmartAttribute(object):
     def __init__(self):
         self.value = None
         self.threshold = None
         self.worst = None
         self.raw_value = None
 
-class SMARTChecker(nagios.BatchStatusPlugin):
+class SmartChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
-        super(SMARTChecker, self).__init__(*args, **kwargs)
+        super(SmartChecker, self).__init__(*args, **kwargs)
         if sys.platform == "win32":
             self.parser.set_defaults(rootdir="c:\\temp\\")
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@smartctl')
@@ -53,7 +54,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
 
     def _get_smartctl(self, request):
         if sys.platform == "win32":
-            return "smartctl"
+            return request.path + "smartctl"
         else:
             return nagios.rootify(request.path + "smartctl")
 
@@ -81,6 +82,8 @@ class SMARTChecker(nagios.BatchStatusPlugin):
             return True
         elif "Smartctl open device:" in output and "failed: No such device" in output:
             return False
+        elif "SMART support is: Unavailable" in output:
+            return True
         else:
             raise nagios.StatusUnknownError(request, output)
 
@@ -92,7 +95,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
                 if fields[0] == "ID#":
                     metricset = fields
                 if fields[0].isdigit() and len(fields) == len(metricset):
-                    attribute = SMARTAttribute()
+                    attribute = SmartAttribute()
                     for metric, value in zip(metricset[2:], fields[2:]):
                         if metric == "VALUE":
                             attribute.value = value
@@ -141,7 +144,7 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         for disknode in dom.getElementsByTagName("PhysicalDriveSmartStats"):
             disk = diskdict[disknode.getAttribute("id")]
             for attrnode in disknode.getElementsByTagName("Attribute"):
-                attribute = SMARTAttribute()
+                attribute = SmartAttribute()
                 attribute.value = attrnode.getAttribute("normalizedCurrent")
                 attribute.worst = attrnode.getAttribute("normalizedWorst")
                 attribute.raw_value = attrnode.getAttribute("rawValue")
@@ -150,7 +153,8 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         return stats
 
     def retrieve_batch_status(self, request):
-        disklist = self._get_disks(request)
+        devicelist = self._get_disks(request)
+        disklist = [d.split()[0] for d in devicelist if d]
         stats = {}
 
         # load the SMART info of adaptec raid controller
@@ -158,8 +162,12 @@ class SMARTChecker(nagios.BatchStatusPlugin):
             stats.update(self.retrieve_adaptec_status(request, disklist))
 
         # load the SMART info of the rest disks.
-        for disk in disklist:
-            cmd = nagios.rootify(self._get_smartctl(request) + (" -A %s" % disk))
+        for device_with_type in devicelist:
+            if device_with_type:
+                disk = device_with_type.split()[0]
+            else:
+                continue
+            cmd = nagios.rootify(self._get_smartctl(request) + (" -A %s" % device_with_type))
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
@@ -193,12 +201,19 @@ class SMARTChecker(nagios.BatchStatusPlugin):
     def check_health_status(self, request, disklist):
         message = "overall test results"
         status_code = nagios.Status.OK
-        for disk in disklist:
-            cmd = nagios.rootify(self._get_smartctl(request) + " -H %s" % disk)
+        for device_with_type in disklist:
+            if device_with_type:
+                disk = device_with_type.split()[0]
+            else:
+                continue
+            cmd = nagios.rootify(self._get_smartctl(request) + " -H %s" % device_with_type)
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
-            test_result = re.findall(r"(?<=SMART overall-health self-assessment test result: )(\w+)$", output)
+            if "SMART support is: Unavailable" in output:
+                message += " %s=NOTSUPPORT" % disk
+                continue
+            test_result = re.findall(r"(?<=SMART overall-health self-assessment test result: )(\w+)", output)
             if not test_result:
                 test_result = re.findall(r"(?<=SMART Health Status: )(\w+)", output)
             if not test_result:
@@ -221,7 +236,8 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         critical = request.crit
         message = "overall health "
         for diskattr in stats.itervalues():
-            for disk, attribute in diskattr.iteritems():
+            for device_with_type, attribute in diskattr.iteritems():
+                disk = device_with_type.split()[0]
                 disk_status_code = diskstats.setdefault(disk, nagios.Status.OK)
                 if not critical:
                     critical = attribute.threshold
@@ -324,5 +340,4 @@ class SMARTChecker(nagios.BatchStatusPlugin):
         return r
 
 if __name__ == "__main__":
-    import sys
-    SMARTChecker().run(sys.argv[1:])
+    SmartChecker().run(sys.argv[1:])

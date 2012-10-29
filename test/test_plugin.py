@@ -40,3 +40,27 @@ class TestPlugin(unittest.TestCase):
                          "return %s, expecting %s" %(
                             nagios.Status.to_status(exit_code),
                             nagios.Status.to_status(status_code)))
+
+    def print_status(self, argument):
+        # get output and exit_code
+        exit_code = 0
+        start = time.time()
+        try:
+            # change the standard output to StringIO()
+            sio = StringIO()
+            original_stdout, sys.stdout = sys.stdout, sio
+            args = argument.split()
+            self.checker.run(args)
+        except SystemExit as se:
+            exit_code = se.code
+        finally:
+            # change the standard output back
+            sys.stdout = original_stdout
+            output = sio.getvalue()
+            sio.close()
+            duration = time.time() - start
+            # print and assert
+            print "\targv:   %s" % argument
+            print "\tstdout: %s" % output.rstrip()
+            print "\tran in: %s secs" % duration
+            print "\tstatus: %s" % exit_code
