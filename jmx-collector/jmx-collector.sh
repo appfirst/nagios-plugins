@@ -6,5 +6,6 @@ then
 	exit
 fi
 
-cd `dirname $0`
-LD_LIBRARY_PATH=/usr/share/appfirst/ ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.2-jar-with-dependencies.jar:appfirst-jmx-0.2.jar com.objectstyle.appfirst.jmx.collector.Application
+
+LD_LIBRARY_PATH=/usr/share/appfirst:$JAVA_HOME/jre/lib ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/jconsole.jar:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.4-jar-with-dependencies.jar com.objectstyle.appfirst.jmx.collector.Application
+

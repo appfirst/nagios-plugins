@@ -2,7 +2,12 @@ package com.objectstyle.appfirst.jmx.collector.execution;
 
 import com.google.common.collect.Maps;
 import com.objectstyle.appfirst.jmx.collector.command.Command;
-import com.objectstyle.appfirst.jmx.collector.config.*;
+import com.objectstyle.appfirst.jmx.collector.config.CommandBuilder;
+import com.objectstyle.appfirst.jmx.collector.config.CommandLineParserException;
+import com.objectstyle.appfirst.jmx.collector.config.CommandLinesSource;
+import com.objectstyle.appfirst.jmx.collector.config.CommandValidationException;
+import com.objectstyle.appfirst.jmx.collector.config.parser.CommandLineParser;
+import com.objectstyle.appfirst.jmx.collector.config.parser.RegexBasedCommandLineParser;
 import com.objectstyle.appfirst.jmx.collector.management.ManagementConnectionFactory;
 import com.objectstyle.appfirst.jmx.collector.output.Output;
 import com.objectstyle.appfirst.jmx.collector.result.ParseErrorResult;
@@ -60,7 +65,8 @@ public class CommandsUpdateLifecycle implements Runnable {
                 List<String> commandLines = commandLinesSource.readLines();
                 LOGGER.debug("Got {} line/lines from the source. Now parsing them.", commandLines.size());
                 CommandBuilder builder = new CommandBuilder();
-                CommandLineParser parser = new CommandLineParser(builder);
+//                CommandLineParser parser = new TokenizerBasedCommandLineParser(builder);
+                CommandLineParser parser = new RegexBasedCommandLineParser(builder);
                 for (String line : commandLines) {
                     try {
                         parser.parse(line);

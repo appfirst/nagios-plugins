@@ -1,27 +1,36 @@
 package com.objectstyle.appfirst.jmx.collector.execution;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterators;
-import com.google.common.primitives.Primitives;
 import com.objectstyle.appfirst.jmx.collector.command.Command;
 import com.objectstyle.appfirst.jmx.collector.command.CompositeValueDefinition;
 import com.objectstyle.appfirst.jmx.collector.command.ValueDefinition;
 import com.objectstyle.appfirst.jmx.collector.management.ManagementConnectionFactory;
 import com.objectstyle.appfirst.jmx.collector.resolve.VirtualMachineResolverException;
-import com.objectstyle.appfirst.jmx.collector.result.*;
+import com.objectstyle.appfirst.jmx.collector.result.CompositeResultData;
+import com.objectstyle.appfirst.jmx.collector.result.ErrorResult;
+import com.objectstyle.appfirst.jmx.collector.result.ErrorResultData;
+import com.objectstyle.appfirst.jmx.collector.result.MBeanDataConverterFactory;
+import com.objectstyle.appfirst.jmx.collector.result.OpenMBeanDataConverterFactory;
+import com.objectstyle.appfirst.jmx.collector.result.Result;
+import com.objectstyle.appfirst.jmx.collector.result.ResultData;
+import com.objectstyle.appfirst.jmx.collector.result.ResultStatus;
+import com.objectstyle.appfirst.jmx.collector.result.SimpleResultData;
+import com.objectstyle.appfirst.jmx.collector.result.UnsupportedDataTypeException;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.*;
+import javax.management.AttributeNotFoundException;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanInfo;
+import javax.management.MBeanServerConnection;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import javax.management.openmbean.OpenMBeanAttributeInfo;
 import javax.management.openmbean.OpenType;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-
-import static com.google.common.collect.Collections2.transform;
+import java.util.Arrays;
 
 public class DefaultCommandExecutor implements CommandExecutor {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCommandExecutor.class);
@@ -82,25 +91,31 @@ public class DefaultCommandExecutor implements CommandExecutor {
         try {
             ObjectName objectName = new ObjectName(removeEscapeSymbols(valueDefinition.getName()));
             MBeanInfo info = connection.getMBeanInfo(objectName);
-            Optional<MBeanAttributeInfo> attributeInfoOptional = Iterators.tryFind(Iterators.forArray(info.getAttributes()), new Predicate<MBeanAttributeInfo>() {
+            MBeanAttributeInfo firstFoundAttributeInfo = (MBeanAttributeInfo) CollectionUtils.find(Arrays.asList(info.getAttributes()), new Predicate() {
                 @Override
-                public boolean apply(MBeanAttributeInfo input) {
-                    return input.getName().equals(valueDefinition.getAttribute());
+                public boolean evaluate(Object o) {
+                    MBeanAttributeInfo attributeInfo = (MBeanAttributeInfo) o;
+                    return attributeInfo.getName().equals(valueDefinition.getAttribute());
                 }
             });
-            if (!attributeInfoOptional.isPresent()) {
+
+            if (firstFoundAttributeInfo == null) {
                 return new ErrorResultData("No such attribute");
             }
             Object value = connection.getAttribute(objectName, valueDefinition.getAttribute());
-            ResultData data = convertData(attributeInfoOptional.get(), value);
-            data = handleSingleKeyForCompositeData(valueDefinition, data);
-            return data;
+            if (value !=null) {
+                ResultData data = convertData(firstFoundAttributeInfo, value);
+                return handleSingleKeyForCompositeData(valueDefinition, data);
+            }
+            else{
+                return new SimpleResultData(null);
+            }
         } catch (MalformedObjectNameException e) {
             return new ErrorResultData("Malformed object name");
         } catch (UnsupportedDataTypeException e) {
             return new ErrorResultData(e.getLocalizedMessage());
         } catch (InstanceNotFoundException e) {
-            return new ErrorResultData("Not such object");
+            return new ErrorResultData("No such object. Object name: " + e.getLocalizedMessage());
         } catch (AttributeNotFoundException e) {
             throw new IllegalStateException("Attribute not found but attribute info exist for it", e);
         } catch (Exception e) {
@@ -127,30 +142,22 @@ public class DefaultCommandExecutor implements CommandExecutor {
 
     private ResultData convertData(MBeanAttributeInfo attributeInfo, Object value) throws UnsupportedDataTypeException {
         if (attributeInfo instanceof OpenMBeanAttributeInfo) {
-            LOGGER.debug("Converting result from Open Type");
+            LOGGER.debug("Converting result from OpenMBean data type");
             return convertOpenMBeanData(((OpenMBeanAttributeInfo) attributeInfo).getOpenType(), value);
-        } else if (isPrimitiveOrWrapperType(attributeInfo.getType())) {
-            LOGGER.debug("Converting result from primitive: {}", attributeInfo.getType());
-            return new SimpleResultData("val", value.toString());
         }
-        throw new UnsupportedDataTypeException(attributeInfo.getType());
-    }
-
-    private boolean isPrimitiveOrWrapperType(String type) {
-        Set<Class<?>> allTypes = new HashSet<Class<?>>();
-        allTypes.addAll(Primitives.allPrimitiveTypes());
-        allTypes.addAll(Primitives.allWrapperTypes());
-        return transform(allTypes, new Function<Class<?>, String>() {
-            @Override
-            public String apply(Class<?> input) {
-                return input.getName();
-            }
-        }).contains(type);
+        else {
+            LOGGER.debug("Converting result from MBean data type");
+            return convertMBeanData(attributeInfo.getType(), value);
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private ResultData convertOpenMBeanData(OpenType<?> type, Object value) throws UnsupportedOpenTypeException {
+    private ResultData convertOpenMBeanData(OpenType<?> type, Object value) throws UnsupportedDataTypeException {
         return OpenMBeanDataConverterFactory.INSTANCE.getConverter(type).convert(type, value);
     }
 
+    @SuppressWarnings("unchecked")
+    private ResultData convertMBeanData(String typeClassName, Object value) throws UnsupportedDataTypeException {
+        return MBeanDataConverterFactory.INSTANCE.getConverter(typeClassName).convert(typeClassName, value);
+    }
 }

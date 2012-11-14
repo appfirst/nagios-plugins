@@ -1,5 +1,9 @@
 package com.objectstyle.appfirst.jmx.collector.result;
 
+import com.objectstyle.appfirst.jmx.collector.result.converter.ArrayTypeConverter;
+import com.objectstyle.appfirst.jmx.collector.result.converter.CompositeTypeConverter;
+import com.objectstyle.appfirst.jmx.collector.result.converter.SimpleTypeConverter;
+
 import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenType;

@@ -1,6 +1,8 @@
 package com.objectstyle.appfirst.jmx.collector.result;
 
 public class SimpleResultData extends ResultData {
+    public static final String DEFAULT_KEY = "val";
+
     private final String key;
 
     private final String value;
@@ -8,6 +10,9 @@ public class SimpleResultData extends ResultData {
     public SimpleResultData(String key, String value) {
         this.key = key;
         this.value = value;
+    }
+    public SimpleResultData(String value) {
+        this(DEFAULT_KEY, value);
     }
 
     @Override

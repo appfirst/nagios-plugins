@@ -1,19 +1,22 @@
-package com.objectstyle.appfirst.jmx.collector.config;
+package com.objectstyle.appfirst.jmx.collector.config.parser;
 
+import com.objectstyle.appfirst.jmx.collector.config.CommandLineParserException;
+import com.objectstyle.appfirst.jmx.collector.config.CommandLineProcessor;
+import com.objectstyle.appfirst.jmx.collector.config.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.StringTokenizer;
 
-public class CommandLineParser {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommandLineParser.class);
+public class TokenizerBasedCommandLineParser implements CommandLineParser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TokenizerBasedCommandLineParser.class);
+    private CommandLineProcessor processor;
 
-    private final CommandLineProcessor processor;
-
-    public CommandLineParser(CommandLineProcessor processor) {
+    public TokenizerBasedCommandLineParser(CommandLineProcessor processor) {
         this.processor = processor;
     }
 
+    @Override
     public void parse(String commandLine) throws CommandLineParserException {
         LOGGER.debug("Starting command string parse: {}", commandLine);
         StringTokenizer tokenizer = new StringTokenizer(commandLine, " \t");
@@ -54,7 +57,8 @@ public class CommandLineParser {
             String attributeValue;
             if (tokenizer.hasMoreTokens()) {
                 attributeValue = tokenizer.nextToken();
-            } else {
+            }
+            else {
                 throw new CommandLineParserException("Attribute value expected but no more tokens left");
             }
             LOGGER.trace("Found attribute value: {}", attributeValue);
@@ -66,19 +70,26 @@ public class CommandLineParser {
         LOGGER.trace("Processing attribute...");
         if (attributeKey.equals(Constants.VIRTUAL_MACHINE_MATCH_PATTERN_KEY)) {
             processor.startVirtualMachineMatchPattern(attributeValue);
-        } else if (attributeKey.equals(Constants.VIRTUAL_MACHINE_URL_KEY)) {
+        }
+        else if (attributeKey.equals(Constants.VIRTUAL_MACHINE_URL_KEY)) {
             processor.startVirtualMachineURL(attributeValue);
-        } else if (attributeKey.equals(Constants.MBEAN_NAME_KEY)) {
+        }
+        else if (attributeKey.equals(Constants.MBEAN_NAME_KEY)) {
             processor.startMBeanName(attributeValue);
-        } else if (attributeKey.equals(Constants.MBEAN_ATTRIBUTE_KEY)) {
+        }
+        else if (attributeKey.equals(Constants.MBEAN_ATTRIBUTE_KEY)) {
             processor.startMBeanAttribute(attributeValue);
-        } else if (attributeKey.equals(Constants.MBEAN_ATTRIBUTE_KEY_KEY)) {
+        }
+        else if (attributeKey.equals(Constants.MBEAN_ATTRIBUTE_KEY_KEY)) {
             processor.startMBeanAttributeKey(attributeValue);
-        } else if (attributeKey.equals(Constants.WARNING_THRESHOLD_KEY)) {
+        }
+        else if (attributeKey.equals(Constants.WARNING_THRESHOLD_KEY)) {
             processor.startWarningThreshold(attributeValue);
-        } else if (attributeKey.equals(Constants.CRITICAL_THRESHOLD_KEY)) {
+        }
+        else if (attributeKey.equals(Constants.CRITICAL_THRESHOLD_KEY)) {
             processor.startCriticalThreshold(attributeValue);
-        } else {
+        }
+        else {
             throw new CommandLineParserException("Unknown attribute key \"" + attributeKey + "\"");
         }
     }

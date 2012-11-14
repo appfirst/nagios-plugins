@@ -1,5 +1,8 @@
-package com.objectstyle.appfirst.jmx.collector.config;
+package com.objectstyle.appfirst.jmx.collector.config.parser;
 
+import com.objectstyle.appfirst.jmx.collector.config.CommandLineParserException;
+import com.objectstyle.appfirst.jmx.collector.config.CommandLineProcessor;
+import com.objectstyle.appfirst.jmx.collector.config.parser.TokenizerBasedCommandLineParser;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.Sequence;
@@ -13,7 +16,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 @RunWith(JMock.class)
-public class CommandLineParserTest {
+public class TokenizerBasedCommandLineParserTest {
     private Mockery context = new JUnit4Mockery();
 
     @Rule
@@ -27,7 +30,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionOnEmptyString() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         thrown.expect(CommandLineParserException.class);
         thrown.expectMessage("Unexpected end of command");
@@ -37,7 +40,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionOnWrongCommandStart() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         thrown.expect(CommandLineParserException.class);
         thrown.expectMessage("Unknown command keyword");
@@ -47,7 +50,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionOnWrongCommandNameStart() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         thrown.expect(CommandLineParserException.class);
         thrown.expectMessage("'[' is expected after jmx_command");
@@ -57,7 +60,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionOnWrongCommandNameEnd() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         thrown.expect(CommandLineParserException.class);
         thrown.expectMessage("']' is expected after command name");
@@ -67,7 +70,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testParseCommandName() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -84,7 +87,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testParseEmptyCommandName() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -101,7 +104,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionWhenExpectingAttributeKey() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -117,7 +120,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionWhenExpectingAttributeValue() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -133,7 +136,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testThrowExceptionOnUnknownAttributeKey() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -149,7 +152,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testParseVirtualMachineMatchPattern() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -169,7 +172,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testParseMBeanName() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -189,7 +192,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testParseMBeanAttribute() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -209,7 +212,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testParseMBeanAttributeKey() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -229,7 +232,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testFullParseVariant1() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
@@ -255,7 +258,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testFullParseVariant2() throws Exception {
-        CommandLineParser parser = new CommandLineParser(processorMock);
+        TokenizerBasedCommandLineParser parser = new TokenizerBasedCommandLineParser(processorMock);
 
         context.checking(new Expectations() {
             {
