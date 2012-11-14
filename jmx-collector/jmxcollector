@@ -91,7 +91,7 @@ case "$1" in
         $infomsg "Starting jmxcollector using JAVA_HOME=$JAVA_HOME and USER=$USER"
 	    
         cd $PRODIR
-        su -s /bin/sh $USER -c "LD_LIBRARY_PATH=$BASEDIR ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.3-jar-with-dependencies.jar:appfirst-jmx-0.3.jar com.objectstyle.appfirst.jmx.collector.Application >/dev/null 2>>/dev/null &" 
+        su -s /bin/sh $USER -c "LD_LIBRARY_PATH=$BASEDIR ${JAVA_HOME}/bin/java -cp .:${JAVA_HOME}/lib/jconsole.jar:${JAVA_HOME}/lib/tools.jar:appfirst-jmx-0.3-jar-with-dependencies.jar:appfirst-jmx-0.3.jar com.objectstyle.appfirst.jmx.collector.Application >/dev/null 2>>/dev/null &"
 
         RETVAL=$?
 
