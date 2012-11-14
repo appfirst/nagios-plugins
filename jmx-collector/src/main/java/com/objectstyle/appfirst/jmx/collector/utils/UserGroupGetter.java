@@ -1,6 +1,7 @@
 package com.objectstyle.appfirst.jmx.collector.utils;
 
 import org.apache.commons.exec.*;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 
@@ -34,13 +35,15 @@ public class UserGroupGetter {
 			resultHandler.waitFor();
 
 			parse(std.toString());
-
-
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
 		} catch (InterruptedException e)
 		{
 			e.printStackTrace();
+		}
+		finally {
+			IOUtils.closeQuietly(std);
+			IOUtils.closeQuietly(err);
 		}
 	}
 
