@@ -2,7 +2,7 @@
 
 if [ ! $JAVA_HOME ]
 then
-	echo 'You must privide JAVA_HOME enveronment variable'
+	echo 'Please specify JAVA_HOME environment variable'
 	exit
 fi
 
