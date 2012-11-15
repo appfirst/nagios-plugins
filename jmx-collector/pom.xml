@@ -4,7 +4,7 @@
 
     <groupId>com.objectstyle.appfirst-jmx</groupId>
     <artifactId>appfirst-jmx</artifactId>
-    <version>0.4</version>
+    <version>0.5-SNAPSHOT</version>
 
     <distributionManagement>
         <repository>

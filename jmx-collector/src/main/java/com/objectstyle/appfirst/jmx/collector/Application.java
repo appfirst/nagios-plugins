@@ -23,6 +23,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class Application {
+    public static final String TEST_MODE = "collector.testMode";
     private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
     private static final String APPFIRST_CONFIG_PATH_PROPERTY = "collector.appfirst.config";

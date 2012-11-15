@@ -3,11 +3,13 @@ package com.objectstyle.appfirst.jmx.collector.resolve;
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterators;
+import com.objectstyle.appfirst.jmx.collector.Application;
 import com.objectstyle.appfirst.jmx.collector.command.PatternVirtualMachineDefinition;
 import com.objectstyle.appfirst.jmx.collector.command.VirtualMachineDefinition;
 import com.objectstyle.appfirst.jmx.collector.utils.JVMAttach;
 import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
+import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
 import org.slf4j.Logger;
@@ -58,7 +60,7 @@ public class LocalVirtualMachineResolver implements VirtualMachineResolver {
         LOGGER.debug("Found descriptor for the virtual machine definition {}: {}", definition, descriptor);
         try {
             LOGGER.debug("Attaching to the virtual machine with descriptor {}", descriptor);
-			JMXServiceURL url = attach(descriptor);
+			JMXServiceURL url = isTestMode() ? attachForTestMode(descriptor) : attach(descriptor);
 			return new LocalVirtualMachineIdentifier(descriptor, url);
 
 		} catch (Exception e) {
@@ -66,7 +68,11 @@ public class LocalVirtualMachineResolver implements VirtualMachineResolver {
         }
     }
 
-	private JMXServiceURL attach(VirtualMachineDescriptor descriptor) throws MalformedURLException {
+    private boolean isTestMode() {
+        return Boolean.valueOf(System.getProperty(Application.TEST_MODE));
+    }
+
+    private JMXServiceURL attach(VirtualMachineDescriptor descriptor) throws MalformedURLException {
 		LocalVirtualMachine lvm = LocalVirtualMachine.getLocalVirtualMachine(Integer.valueOf(descriptor.id()));
 		if(!lvm.isManageable()){
 			JVMAttach attach = new JVMAttach();
@@ -79,6 +85,12 @@ public class LocalVirtualMachineResolver implements VirtualMachineResolver {
 		lvm = LocalVirtualMachine.getLocalVirtualMachine(Integer.valueOf(descriptor.id()));
 		return new JMXServiceURL(lvm.connectorAddress());
 	}
+
+    private JMXServiceURL attachForTestMode(VirtualMachineDescriptor descriptor) throws IOException, AttachNotSupportedException, AgentInitializationException, AgentLoadException {
+        LOGGER.debug("Attention: TEST mode attaching works...");
+        VirtualMachine virtualMachine = VirtualMachine.attach(descriptor);
+        return new JMXServiceURL(getVirtualMachineAddress(virtualMachine));
+    }
 
 	private VirtualMachineDescriptor resolveVirtualMachineDescriptor(VirtualMachineDefinition definition)
             throws VirtualMachineResolverException {
