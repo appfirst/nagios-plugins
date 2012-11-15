@@ -2,6 +2,7 @@ package com.objectstyle.appfirst.jmx.collector.config;
 
 import com.google.common.io.InputSupplier;
 import com.google.common.io.LineReader;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,8 +21,9 @@ public class SimpleCommandLinesSource implements CommandLinesSource {
         List<String> lines = new ArrayList<String>();
         String line;
         while ((line = reader.readLine()) != null) {
-            if (line.trim().startsWith(Constants.COMMAND_KEYWORD)) {
-                lines.add(line);
+            String striped = StringUtils.strip(line);
+            if (striped.startsWith(Constants.COMMAND_KEYWORD)) {
+                lines.add(striped);
             }
         }
         return lines;

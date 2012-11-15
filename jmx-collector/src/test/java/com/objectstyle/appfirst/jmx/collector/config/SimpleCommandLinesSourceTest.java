@@ -17,11 +17,12 @@ import java.util.List;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.assertFalse;
 
 @RunWith(JMock.class)
 public class SimpleCommandLinesSourceTest {
     private static final String TEST_CONFIG_DATA = "command[check_load]=/usr/share/appfirst/plugins/libexec/check_load -w 15,10,5 -c 30,25,20\n"
-            + "jmx_command[Application.Runtime.Name] -P com.objectstyle.Application -O java.lang:type=Runtime -A name\n"
+            + "jmx_command[Application.Runtime.Name] -P com.objectstyle.Application -O java.lang:type=Runtime -A name\u2028\u2028\n"
             + "jmx_command[Application.Memory.HeapMemoryUsage.Used] -P com.objectstyle.Application -O java.lang:type=Memory -A heapMemoryUsage -K used";
 
     private Mockery context = new JUnit4Mockery();
@@ -61,6 +62,7 @@ public class SimpleCommandLinesSourceTest {
         assertEquals(2, commandStrings.size());
         for (String string : commandStrings) {
             assertTrue(string.startsWith("jmx_command"));
+            assertFalse(Character.isWhitespace(string.toCharArray()[string.length()-1]));
         }
     }
 }
