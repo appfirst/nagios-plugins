@@ -217,22 +217,24 @@ class BasePlugin(object):
                 NOTE: -oo means nagative infinite, +oo means positive infinite
         '''
         status_code = Status.UNKNOWN
-        if   (warn is not None
-            and (  (not exclusive                          )
-                or (    exclusive and value == warn))
-            and (  (not reverse   and value <  warn)
-                or (    reverse   and value >  warn))):
-            status_code = Status.OK
-        elif (crit is not None
-            and (  (    exclusive                          )
-                or (not exclusive and value == warn))
-            and (  (not reverse   and value >  crit)
-                or (    reverse   and value <  crit))):
-            status_code = Status.CRITICAL
-        elif warn is not None:
-            status_code = Status.WARNING
+        if (not reverse):
+            if (crit is not None
+                and (value > crit or (not exclusive and value == crit))):
+                status_code = Status.CRITICAL
+            elif (warn is not None
+                and (value > warn or (not exclusive and value == warn))):
+                status_code = Status.WARNING
+            else:
+                status_code = Status.OK
         else:
-            status_code = Status.OK
+            if (crit is not None
+                and (value < crit or (not exclusive and value == crit))):
+                status_code = Status.CRITICAL
+            elif (warn is not None
+                and (value < warn or (not exclusive and value == warn))):
+                status_code = Status.WARNING
+            else:
+                status_code = Status.OK
         return status_code
 
     def superimpose(self, status_code, value, warn, crit, reverse=False, exclusive=False):
