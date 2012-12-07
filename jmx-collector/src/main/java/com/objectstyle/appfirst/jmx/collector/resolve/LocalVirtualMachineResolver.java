@@ -72,17 +72,17 @@ public class LocalVirtualMachineResolver implements VirtualMachineResolver {
         return Boolean.valueOf(System.getProperty(Application.TEST_MODE));
     }
 
-    private JMXServiceURL attach(VirtualMachineDescriptor descriptor) throws MalformedURLException {
+    private JMXServiceURL attach(VirtualMachineDescriptor descriptor) throws MalformedURLException, VirtualMachineResolverException {
 		LocalVirtualMachine lvm = LocalVirtualMachine.getLocalVirtualMachine(Integer.valueOf(descriptor.id()));
-		if(!lvm.isManageable()){
+		if (!lvm.isAttachable())
+			throw new VirtualMachineResolverException(String.format("Unable to attach to the virtual machine pid: %s",descriptor.id()));
+		if (!lvm.isManageable()){
 			JVMAttach attach = new JVMAttach();
 			attach.setLvm(lvm);
-			attach.attach();
+			lvm = attach.attach();
+			if (lvm == null || !lvm.isManageable())
+				throw new VirtualMachineResolverException(String.format("Unable to attach to the virtual machine pid: %s",descriptor.id()));
 		}
-		/**
-		 * Reload the lvm to update all flags
-		 */
-		lvm = LocalVirtualMachine.getLocalVirtualMachine(Integer.valueOf(descriptor.id()));
 		return new JMXServiceURL(lvm.connectorAddress());
 	}
 

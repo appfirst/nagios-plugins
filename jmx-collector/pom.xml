@@ -4,7 +4,7 @@
 
     <groupId>com.objectstyle.appfirst-jmx</groupId>
     <artifactId>appfirst-jmx</artifactId>
-    <version>0.4</version>
+    <version>0.6-SNAPSHOT</version>
 
     <distributionManagement>
         <repository>
@@ -60,6 +60,18 @@
             <version>2.6.0-RC2</version>
             <scope>test</scope>
         </dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>1.9.5</version>
+			<scope>test</scope>
+            <exclusions>
+               <exclusion>
+                   <groupId>org.hamcrest</groupId>
+                   <artifactId>hamcrest-core</artifactId>
+               </exclusion>
+           </exclusions>
+		</dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -79,11 +91,6 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-exec</artifactId>
 			<version>1.1</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>1.4</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
