@@ -171,6 +171,8 @@ class BasePlugin(object):
     def _default_argument(self):
         self.parser.add_argument("-w", "--warn", type=int, required=False)
         self.parser.add_argument("-c", "--crit", type=int, required=False)
+        self.parser.add_argument("-e", "--excl", type=int, required=False)
+        self.parser.add_argument("-r", "--rvrs", type=int, required=False)
 
     def _parse_range(self, range_str):
         pass
@@ -216,6 +218,7 @@ class BasePlugin(object):
 
                 NOTE: -oo means nagative infinite, +oo means positive infinite
         '''
+
         status_code = Status.UNKNOWN
         if (not reverse):
             if (crit is not None
@@ -350,7 +353,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
     # optionally with some sub_performance value and the Units Of Measurement
     # sub_perfs = [ (pfname, pfvalue), ... ]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
-        status_code = self.verdict(value, request.warn, request.crit)
+        status_code = self.verdict(value, request.warn, request.crit, request.rvrs, request.excl)
         r = Result(request.option, status_code, message, request.appname);
         if value is not None:
             r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
