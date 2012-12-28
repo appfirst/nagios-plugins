@@ -171,6 +171,8 @@ class BasePlugin(object):
     def _default_argument(self):
         self.parser.add_argument("-w", "--warn", type=int, required=False)
         self.parser.add_argument("-c", "--crit", type=int, required=False)
+        self.parser.add_argument("-e", "--excl", type=int, required=False)
+        self.parser.add_argument("-r", "--rvrs", type=int, required=False)
 
     def _parse_range(self, range_str):
         pass
@@ -216,23 +218,26 @@ class BasePlugin(object):
 
                 NOTE: -oo means nagative infinite, +oo means positive infinite
         '''
+
         status_code = Status.UNKNOWN
-        if   (warn is not None
-            and (  (not exclusive                          )
-                or (    exclusive and value == warn))
-            and (  (not reverse   and value <  warn)
-                or (    reverse   and value >  warn))):
-            status_code = Status.OK
-        elif (crit is not None
-            and (  (    exclusive                          )
-                or (not exclusive and value == warn))
-            and (  (not reverse   and value >  crit)
-                or (    reverse   and value <  crit))):
-            status_code = Status.CRITICAL
-        elif warn is not None:
-            status_code = Status.WARNING
+        if (not reverse):
+            if (crit is not None
+                and (value > crit or (not exclusive and value == crit))):
+                status_code = Status.CRITICAL
+            elif (warn is not None
+                and (value > warn or (not exclusive and value == warn))):
+                status_code = Status.WARNING
+            else:
+                status_code = Status.OK
         else:
-            status_code = Status.OK
+            if (crit is not None
+                and (value < crit or (not exclusive and value == crit))):
+                status_code = Status.CRITICAL
+            elif (warn is not None
+                and (value < warn or (not exclusive and value == warn))):
+                status_code = Status.WARNING
+            else:
+                status_code = Status.OK
         return status_code
 
     def superimpose(self, status_code, value, warn, crit, reverse=False, exclusive=False):
@@ -348,7 +353,7 @@ class BatchStatusPlugin(CommandBasedPlugin):
     # optionally with some sub_performance value and the Units Of Measurement
     # sub_perfs = [ (pfname, pfvalue), ... ]
     def get_result(self, request, value, message, pfhead="total", UOM=None, sub_perfs=[]):
-        status_code = self.verdict(value, request.warn, request.crit)
+        status_code = self.verdict(value, request.warn, request.crit, request.rvrs, request.excl)
         r = Result(request.option, status_code, message, request.appname);
         if value is not None:
             r.add_performance_data(pfhead, value, UOM=UOM, warn=request.warn, crit=request.crit)
