@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+#  Simple script to capture the output of a command, and write it to a logfile.
+#  The existing file with the given name will be renamed to .old.  This will 
+#  cause the AppFirst collector to think that the log file has been "rotated", 
+#  and therefore start reading from the beginning.  The point of all this is to 
+#  capture any command output to a log file, while consuming neglible local 
+#  disk space.
+#
+#  This script was designed to be run in a cron job.
+
+if [ $# != 2 ]
+then
+    echo Usage:  $0 command filename
+    exit
+fi
+
+CMD="$1"
+LOGFILE="$2"
+OLDLOG="$LOGFILE.old"
+
+# echo cmd: $CMD, logfile: $LOGFILE, oldlog:$OLDLOG
+
+if [ -e $LOGFILE ]
+then
+    mv $LOGFILE $OLDLOG
+fi
+$CMD > $LOGFILE
