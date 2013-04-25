@@ -1,3 +1,10 @@
+##	Check IMPI Sensors for use with AppFirst Polled Data under windows
+##	clark@appfirst.com
+##	requires that ipmiutil be installed.
+##	http://ipmiutil.sourceforge.net/FILES/ipmiutil-2.9.0.msi
+##      Polled Data Config Line:
+##	command[sensor_fan]=c:\windows\system32\WindowsPowerShell\v1.0\powershell.exe "c:\Users\Administrator\ipmi\check_ipmi_sensors -t fan"
+##
 Param (
 	[parameter(Mandatory=$false)]
 	[alias("t")]
