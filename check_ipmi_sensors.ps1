@@ -5,6 +5,9 @@
 ##      Polled Data Config Line:
 ##	command[sensor_fan]=c:\windows\system32\WindowsPowerShell\v1.0\powershell.exe "c:\Users\Administrator\ipmi\check_ipmi_sensors -t fan"
 ##
+##  Note that on some systems, you may need to change the bios to enable "Plug & Play BMC Detection" or windows will not load
+##   the IPMI driver
+##
 Param (
 	[parameter(Mandatory=$false)]
 	[alias("t")]
