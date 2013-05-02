@@ -1,16 +1,34 @@
 #!/usr/bin/env python
 '''
 Created on Aug 27, 2012
-
 @author: Yangming
+
+Updated May 1, 2013
+clark@appfirst.com
+added support for lsi megaraid
+
+Requires:
+    smartctl (from smartmontools) >= 5.42
+    if adaptec raid controller, /usr/StorMan/arcconf >= 6.50
+    if LSI MegaRaid controller, /usr/sbin/MegaCli >= 8.07.07
+
+Examples:
+   python check_smart.py -p /usr/sbin/ -t OVERALL_HEALTH
+   python check_smart.py -p /usr/sbin/ -r megaraid -t OVERALL_HEALTH
+   python check_smart.py -p /usr/sbin/ -r megaraid -t SPIN_RETRY_COUNT
+    
 '''
-import ucommands as commands
+import sys
+# ucommands uses python subprocess module, which is only supported in python >= 2.7, but windows needs subprocess
+if sys.platform == "win32":
+    import ucommands as commands
+else:    
+    import commands
 import nagios
 import re
 import time
 from xml.dom.minidom import parseString
 from nagios import CommandBasedPlugin as plugin
-import sys
 
 class SmartAttribute(object):
     def __init__(self):
@@ -27,8 +45,8 @@ class SmartChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@smartctl')
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='smart')
         self.parser.add_argument("-D", "--disk",     required=False, type=str)
-        self.parser.add_argument("-r", "--raid",     required=False, type=str, choices=["adaptec"])
-        self.parser.add_argument("-p", "--path",     required=False, type=str, default="")
+        self.parser.add_argument("-r", "--raid",     required=False, type=str, choices=["adaptec", "megaraid"], help="raid controller type")
+        self.parser.add_argument("-p", "--path",     required=False, type=str, default="", help="path to smartctl")
         #the interval (by sec) indicates how often this program will fetch smart info
         #if queried more frequently, it returns merely the last fetched info
         self.parser.add_argument("-i", "--interval", required=False, type=int, default=300)
@@ -36,6 +54,25 @@ class SmartChecker(nagios.BatchStatusPlugin):
     def _get_disks(self, request):
         if request.disk:
             disklist = [request.disk]
+            
+        elif request.raid == "megaraid":
+            # get list of OS device names (/dev/sda1, etc)
+            devlist = []
+            cmd = nagios.rootify("/sbin/fdisk -l")
+            output = commands.getoutput(cmd)
+            devlist = re.findall(r"(?<=Disk )((?:/[\w-]+)+)(?=:)", output)
+            #print "devlist: ", devlist
+            disklist = []
+            # get list of raid controller device ids
+            cmd = nagios.rootify('/usr/sbin/MegaCli -PDList -aALL | grep "Device Id"')
+            output = commands.getoutput(cmd)
+            #print "MegaCli Output: ", output
+            for line in output.split('\n'):
+                did = line.split(":")[1].strip()
+                # note that it does not matter which 'dev' you specify, as long as it's valid.  There is no mapping from 'dev' to 'device ID'
+                disk = "%s -d sat+megaraid,%s" % (devlist[0], did)
+                disklist.append(disk)
+       
         else:
             output = commands.getoutput(self._get_smartctl(request) + " --scan")
             if self._validate_scan_output(request, output):
@@ -154,13 +191,16 @@ class SmartChecker(nagios.BatchStatusPlugin):
 
     def retrieve_batch_status(self, request):
         devicelist = self._get_disks(request)
+        # print "devicelist: ", devicelist
         disklist = [d.split()[0] for d in devicelist if d]
+        # print "disklist: ", disklist
         stats = {}
 
         # load the SMART info of adaptec raid controller
         if request.raid == "adaptec":
             stats.update(self.retrieve_adaptec_status(request, disklist))
-
+            return stats
+            
         # load the SMART info of the rest disks.
         for device_with_type in devicelist:
             if device_with_type:
@@ -168,11 +208,14 @@ class SmartChecker(nagios.BatchStatusPlugin):
             else:
                 continue
             cmd = nagios.rootify(self._get_smartctl(request) + (" -A %s" % device_with_type))
+            # print "smartctl cmd: ", cmd
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
             for attrid, attribute in self._parse_output(request, output):
-                stats.setdefault(attrid, {})[disk] = attribute
+                # stats.setdefault(attrid, {})[disk] = attribute
+                stats.setdefault(attrid, {})[device_with_type] = attribute
+        # print "stats: ", stats        
         return stats
 
     def get_status_value(self, attr, request):
@@ -207,6 +250,7 @@ class SmartChecker(nagios.BatchStatusPlugin):
             else:
                 continue
             cmd = nagios.rootify(self._get_smartctl(request) + " -H %s" % device_with_type)
+            # print "get health command: ", cmd
             output = commands.getoutput(cmd)
             if not self._validate_output(request, output):
                 continue
@@ -256,11 +300,11 @@ class SmartChecker(nagios.BatchStatusPlugin):
     @plugin.command("ADAPTEC_HEALTH")
     def get_adaptec_health(self, request):
         if sys.platform == "win32":
-            raise nagios.StatusUnknownError(request, "Only Adaptec on linux are supported at the moment.")
+            raise nagios.StatusUnknownError(request, "Adaptec Health only supported on linux.")
         disklist = self._get_disks(request)
         diskdict = self._detect_adaptec(disklist, request)
         if not diskdict:
-            raise nagios.StatusUnknownError(request, "No Adaptec Adaptec detected.")
+            raise nagios.StatusUnknownError(request, "No Adaptec Raid Controller detected.")
         message = ""
         cmd = nagios.rootify("/usr/StorMan/arcconf getlogs 1 stats")
         output = commands.getoutput(cmd)

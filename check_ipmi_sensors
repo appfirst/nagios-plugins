@@ -99,6 +99,7 @@ use strict;
 use Getopt::Std;
 
 my $debug = 0;
+my $inject_error = 0;
 
 my $IPMI_HOSTS = undef;
 my $IPMI_SENSORS_PATH = "/usr/local/sbin/ipmi-sensors";
@@ -131,7 +132,7 @@ sub usage
     exit 0;
 }
 
-if (!getopts("h:S:s:t:dH"))
+if (!getopts("h:S:s:t:dHx"))
 {
     usage();
 }
@@ -165,6 +166,11 @@ if (defined($main::opt_t))
 if (defined($main::opt_d))
 {
     $debug = 1;
+}
+
+if (defined($main::opt_x))
+{
+    $inject_error = 1;
 }
 
 if ($ENV{"IPMI_HOSTS"})
@@ -321,6 +327,9 @@ foreach $line (@IPMI_SENSORS_OUTPUT_LINES)
     }
     if ($reading ne "N/A")
     {
+        if ($inject_error){
+            $reading = int($reading)/2
+        }
         print "$id_string=$reading"
     }
     else
