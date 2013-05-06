@@ -235,6 +235,12 @@ else
     $aggregate_state = "OK";
 }
 
+if ($inject_error)
+{
+    $aggregate_state = "CRIT";
+    $critical_num++;
+}
+
 if (defined($main::opt_t))
 {
     print "$sensor_type $aggregate_state | ";
@@ -307,12 +313,12 @@ foreach $line (@IPMI_SENSORS_OUTPUT_LINES)
     elsif ($state eq "Warning")
     {
         $warning_num++;
-        $output_str = "WARNING";
+        $output_str = "WARN";
     }
     elsif ($state eq "Critical")
     {
         $critical_num++;
-        $output_str = "CRITICAL";
+        $output_str = "CRIT";
     }
     else
     {
@@ -327,7 +333,8 @@ foreach $line (@IPMI_SENSORS_OUTPUT_LINES)
     }
     if ($reading ne "N/A")
     {
-        if ($inject_error){
+        if ($inject_error)
+        {
             $reading = int($reading)/2
         }
         print "$id_string=$reading"
