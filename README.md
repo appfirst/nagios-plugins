@@ -1,4 +1,3 @@
-
 ![Appfirst](http://www.appfirst.com/img/appfirst-logo.png)
 Nagios Plugins by [AppFirst](http://www.appfirst.com)
 =====================================================
@@ -19,7 +18,7 @@ This README will cover the following topics:
 - [StastD Wrapping](#stastd-wrapping)
 - [AppFirst Integration](#appfirst-integration)
 
-For further question, please email <yangming@appfirst.com>
+For further question, please email <clark@appfirst.com>
 
 ##Nagios Plugins
 ------------------------------
