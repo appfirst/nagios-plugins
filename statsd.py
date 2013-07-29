@@ -6,7 +6,7 @@ Created on Jun 14, 2012
 import os, sys
 _rootpath = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(_rootpath, "..", "statsd_clients", "python"))
-sys.path.append(os.path.join(_rootpath, "statsd"))
+sys.path.append(os.path.join(_rootpath, "statsd", "AFStatsd", "afstatsd"))
 try:
     from afclient import Statsd, AFTransport
     Statsd.set_transport(AFTransport())
@@ -14,9 +14,9 @@ except:
     print "Statsd Library is not available, check PYTHON_PATH"
     Statsd = None
 
-TIMER_BUCKET_PATTERN = "sys.app.%(appname)s.%(name)s"
-COUNTER_BUCKET_PATTERN = "sys.app.%(appname)s.%(name)s"
-GAUGE_BUCKET_PATTERN = "sys.app.%(appname)s.%(name)s"
+TIMER_BUCKET_PATTERN = "sys.app.timer.%(appname)s.%(name)s"
+COUNTER_BUCKET_PATTERN = "sys.app.counter.%(appname)s.%(name)s"
+GAUGE_BUCKET_PATTERN = "sys.app.gauge.%(appname)s.%(name)s"
 
 def set_timer_bucket_pattern(pattern):
     global TIMER_BUCKET_PATTERN
