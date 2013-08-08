@@ -7,6 +7,9 @@ Created on Aug 8, 2013
 
 Split from the check_postgresql.py script because PostgreSQL 9.2 has some
 changes to the pg_stat_activity table that aren't backwards compatible.
+
+See here for more info:
+http://www.depesz.com/2012/01/23/waiting-for-9-2-split-of-current_query-in-pg_stat_activity/
 """
 
 import commands
@@ -40,7 +43,7 @@ class PostgresChecker(nagios.BatchStatusPlugin):
     @plugin.command("CONNECTIONS_IDLE")
     @statsd.gauge
     def get_connections_idle(self, request):
-        sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE state LIKE \'%idle\';"
+        sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE state LIKE \'idle%\';"
         value = self._single_value_stat(request, sql_stmt)
         return self.get_result(request, value, '%s idle conns' % value, 'idle')
 
