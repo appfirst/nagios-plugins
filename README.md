@@ -52,7 +52,7 @@ the options are:
                                [-d ROOTDIR] [-f FILENAME] [-u USER] [-p PORT]
                                [-z APPNAME]                               
 
-***Note:** If you are running PostgreSQL 9.2.x, you should use the *`check_postgresql_92.py`* script instead of *`check_postgresql.py`.* The options and arguments are exactly the same for both scripts. There is a separate script for 9.2 because PostgreSQL 9.2 introduced some changes to the statistics tables which require slightly different queries.*
+*Note: If you are running PostgreSQL 9.2.x, you should use the* `check_postgresql_92.py` *script instead of* `check_postgresql.py`. *The options and arguments are exactly the same for both scripts. There is a separate script for 9.2 because PostgreSQL 9.2 introduced some changes to the statistics tables which require slightly different queries.*
 
 **TUPLES_UPDATED**
 
