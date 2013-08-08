@@ -7,7 +7,7 @@ Nagios Plugins by [AppFirst](http://www.appfirst.com)
 This README will cover the following topics:
 
 - [Nagios Plugins](#nagios-plugins)
- 	* check_postgresql
+ 	* check_postgresql (and check_postgresql_92)
  	* check_mysql
  	* check_mongodb
  	* check_memcached
@@ -51,6 +51,8 @@ the options are:
                                {DATABASE_SIZE, TUPLES_UPDATED, LOCKS_ROW, LOCKS_ACCESS, TUPLES_READ, LOCKS_SHARE, CONNECTIONS_WAITING, CONNECTIONS_IDLE, CONNECTIONS_ACTIVE, LOCKS_EXCLUSIVE, TUPLES_INSERTED, TUPLES_DELETED}
                                [-d ROOTDIR] [-f FILENAME] [-u USER] [-p PORT]
                                [-z APPNAME]                               
+
+***Note:** If you are running PostgreSQL 9.2.x, you should use the *`check_postgresql_92.py`* script instead of *`check_postgresql.py`.* The options and arguments are exactly the same for both scripts. There is a separate script for 9.2 because PostgreSQL 9.2 introduced some changes to the statistics tables which require slightly different queries.*
 
 **TUPLES_UPDATED**
 
