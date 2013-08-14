@@ -56,7 +56,7 @@ class SmartChecker(nagios.BatchStatusPlugin):
         #the interval (by sec) indicates how often this program will fetch smart info
         #if queried more frequently, it returns merely the last fetched info
         self.parser.add_argument("-i", "--interval", required=False, type=int, default=300)
-        self.parser.add_argument("--unique",   required=False, type=str, default=chk.disk)
+        self.parser.add_argument("--unique",   required=False, type=str, default=str(chk.disk))
 
     def _get_disks(self, request):
         if request.disk:

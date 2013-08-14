@@ -27,7 +27,7 @@ class RedisChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-p", "--port",     required=False, type=int)
         self.parser.add_argument("-n", "--database", required=False, type=int)
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='redis')
-        self.parser.add_argument("--unique",   required=False, type=str, default=chk.host+str(chk.port))
+        self.parser.add_argument("--unique",   required=False, type=str, default=str(chk.host)+str(chk.port))
 
     def _get_batch_status(self, request):
         cmd = "redis-cli --raw"
