@@ -158,7 +158,7 @@ class MySqlChecker(nagios.BatchStatusPlugin):
         r.add_performance_data('bytes_sent', values[1], 'MB', warn=request.warn, crit=request.crit)
         return r
 
-    @plugin.command("SELECTS")  # TODO Depricate. Should be called something like JOINS
+    @plugin.command("SELECTS")  # TODO Deprecate. Should be called something like JOINS
     @statsd.counter
     def get_select_stats(self, request):
         # read data from command line, calculate and verdict
