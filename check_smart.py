@@ -29,6 +29,7 @@ import re
 import time
 from xml.dom.minidom import parseString
 from nagios import CommandBasedPlugin as plugin
+import argparse
 
 class SmartAttribute(object):
     def __init__(self):
@@ -40,6 +41,11 @@ class SmartAttribute(object):
 class SmartChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(SmartChecker, self).__init__(*args, **kwargs)
+        # Hack to determine uniqueness of script defs
+        check = argparse.ArgumentParser()
+        check.add_argument("-D", "--disk",     required=False, type=str)
+        chk, unknown = check.parse_known_args()
+
         if sys.platform == "win32":
             self.parser.set_defaults(rootdir="c:\\temp\\")
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@smartctl')
@@ -50,6 +56,7 @@ class SmartChecker(nagios.BatchStatusPlugin):
         #the interval (by sec) indicates how often this program will fetch smart info
         #if queried more frequently, it returns merely the last fetched info
         self.parser.add_argument("-i", "--interval", required=False, type=int, default=300)
+        self.parser.add_argument("--unique",   required=False, type=str, default=chk.disk)
 
     def _get_disks(self, request):
         if request.disk:

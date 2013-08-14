@@ -1,10 +1,17 @@
-'''
+"""
 Created on May 29, 2012
-
 @author: Yangming
-'''
-import argparse, sys, os, pickle, string
+
+Updated 2013-08 by Mike Okner
+"""
+
+import sys
+import os
+import pickle
+import argparse
+import string
 from exceptions import Exception
+
 
 def BtoMB(bs):
     return bs / (1024 * 1024)
@@ -40,6 +47,7 @@ def rootify(cmd, user=None):
             return "sudo -u %s %s" % (user, cmd)
         else:
             return "sudo %s" % cmd
+
 
 class Status(object):
     OK = 0
@@ -121,6 +129,7 @@ class Result(object):
             pdline += ';%s' % perfdata["maxv"]
         return pdline
 
+
 class StatusUnknownError(Exception):
     def __init__(self, request, msg=None):
         self.appname = request.appname
@@ -135,12 +144,14 @@ class StatusUnknownError(Exception):
     def result(self):
         return Result(self.status_type, self.status, str(self), self.appname)
 
+
 class MultipleInstancesError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
         self.status_type = request.option
         self.status = Status.UNKNOWN
         self.msg = msg or "multiple instances found, specific the one you need."
+
 
 class ServiceInaccessibleError(StatusUnknownError):
     def __init__(self, request, msg=None):
@@ -149,6 +160,7 @@ class ServiceInaccessibleError(StatusUnknownError):
         self.status = Status.CRITICAL
         self.msg = msg or "service is not accessible."
 
+
 class AuthenticationFailedError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
@@ -156,12 +168,14 @@ class AuthenticationFailedError(StatusUnknownError):
         self.status = Status.UNKNOWN
         self.msg = msg or "authentication failed. please specific user and password"
 
+
 class OutputFormatError(StatusUnknownError):
     def __init__(self, request, msg=None):
         self.appname = request.appname
         self.status_type = request.option
         self.status = Status.UNKNOWN
         self.msg = msg or "output format is not as expected."
+
 
 class BasePlugin(object):
     def __init__(self):
@@ -241,6 +255,7 @@ class BasePlugin(object):
             status_code = sc
         return status_code
 
+
 class CommandBasedPlugin(BasePlugin):
     def __init__(self, *args, **kwargs):
         super(CommandBasedPlugin, self).__init__(*args, **kwargs)
@@ -275,13 +290,13 @@ class CommandBasedPlugin(BasePlugin):
             return method
         return add_command
 
+
 # convenience skeleton class to provide common methods
 # for querying status in a batch output
 class BatchStatusPlugin(CommandBasedPlugin):
     def __init__(self, *args, **kwargs):
         super(BatchStatusPlugin, self).__init__(*args, **kwargs)
-        self.parser.add_argument("-d", "--rootdir", required=False,
-                                 default='/tmp/', type=str);
+        self.parser.add_argument("-d", "--rootdir", required=False, default='/tmp/', type=str);
 
     # a class has to provide
     #    _get_batch_status(request)
@@ -303,18 +318,24 @@ class BatchStatusPlugin(CommandBasedPlugin):
         try:
             fn = os.path.join(request.rootdir, request.filename)
             if os.path.exists(fn):
-                laststats = pickle.load(open(fn))
+                laststats = pickle.load(open(fn))[request.unique]
         except pickle.PickleError:
             pass
         except EOFError:
+            pass
+        except KeyError:
             pass
         return laststats
 
     # dump the status as the laststats for future query
     def save_status(self, request, laststats):
+        full = {}
         try:
             fn = os.path.join(request.rootdir, request.filename)
-            pickle.dump(laststats, open(fn, "w"))
+            if os.path.exists(fn):
+                full = pickle.load(open(fn))
+            full[request.unique] = laststats
+            pickle.dump(full, open(fn, "w"))
         except pickle.PickleError:
             pass
         except EOFError:

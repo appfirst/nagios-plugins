@@ -8,14 +8,22 @@ import nagios
 from nagios import CommandBasedPlugin as plugin
 import commands
 import statsd
+import argparse
 
 class MemcachedChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MemcachedChecker, self).__init__(*args, **kwargs)
+        # Hack to determine uniqueness of script defs
+        check = argparse.ArgumentParser()
+        check.add_argument("-H", "--host",     required=False, type=str)
+        check.add_argument("-p", "--port",     required=False, type=int)
+        chk, unknown = check.parse_known_args()
+
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@memcached_stats')
         self.parser.add_argument("-H", "--host",     required=False, type=str, default="localhost")
         self.parser.add_argument("-p", "--port",     required=False, type=int, default=11211)
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='memcached')
+        self.parser.add_argument("--unique",   required=False, type=str, default=chk.host+str(chk.port))
 
     def _get_batch_status(self, request):
         cmd = "echo 'stats' | nc"

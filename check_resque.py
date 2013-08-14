@@ -8,10 +8,17 @@ import nagios
 from nagios import CommandBasedPlugin as plugin
 import commands
 import statsd
+import argparse
 
 class ResqueChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(ResqueChecker, self).__init__(*args, **kwargs)
+        # Hack to determine uniqueness of script defs
+        check = argparse.ArgumentParser()
+        check.add_argument("-H", "--host",     required=False, type=str)
+        check.add_argument("-p", "--port",     required=False, type=int)
+        chk, unknown = check.parse_known_args()
+
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@resque_redis-cli')
         self.parser.add_argument("-u", "--user",     required=False, type=str)
         self.parser.add_argument("-s", "--password", required=False, type=str)
@@ -19,6 +26,7 @@ class ResqueChecker(nagios.BatchStatusPlugin):
         self.parser.add_argument("-p", "--port",     required=False, type=int)
         self.parser.add_argument("-n", "--database", required=False, type=int)
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='resque')
+        self.parser.add_argument("--unique",   required=False, type=str, default=chk.host+str(chk.port))
 
     @plugin.command("QUEUE_LENGTH")
     @statsd.gauge

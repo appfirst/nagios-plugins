@@ -10,16 +10,24 @@ import commands
 import nagios
 import statsd
 from nagios import CommandBasedPlugin as plugin
+import argparse
 
 class MongoDBChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
         super(MongoDBChecker, self).__init__(*args, **kwargs)
+        # Hack to determine uniqueness of script defs
+        check = argparse.ArgumentParser()
+        check.add_argument("-H", "--host",     required=False, type=str)
+        check.add_argument("-p", "--port",     required=False, type=int)
+        chk, unknown = check.parse_known_args()
+
         self.parser.add_argument("-f", "--filename", required=False, type=str, default='pd@mongo')
         self.parser.add_argument("-u", "--user",     required=False, type=str)
         self.parser.add_argument("-s", "--password", required=False, type=str)
         self.parser.add_argument("-H", "--host",     required=False, type=str)
         self.parser.add_argument("-p", "--port",     required=False, type=int)
         self.parser.add_argument("-z", "--appname",  required=False, type=str, default='mongodb')
+        self.parser.add_argument("--unique",   required=False, type=str, default=chk.host+str(chk.port))
 
     def _get_batch_status(self, request):
         cmd = "mongostat -n 1 --noheaders"
