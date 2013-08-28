@@ -15,6 +15,7 @@ public class Primitives {
                clazz.equals(Double.class) ||
                clazz.equals(Long.class) ||
                clazz.equals(Void.class) ||
+               clazz.equals(String.class) ||
                clazz.equals(Float.class);
     }
 
