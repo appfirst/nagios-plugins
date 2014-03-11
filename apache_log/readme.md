@@ -11,6 +11,11 @@ by default af_apache_visited_urls.log in folder where script located.
 
 * `python af_alogs.py -h` will detail configuration flags
 
+to start daemon:
+    `python af_alogs.py start --interval=60`
+and to stop:
+    `python af_alogs.py stop`
+
 
 Configuration flags
 -----------
