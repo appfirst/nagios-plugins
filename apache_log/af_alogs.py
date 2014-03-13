@@ -26,9 +26,10 @@ class App():
         # apacheLogFilePath
         if opt and opt.apacheLogFilePath:
             LOGGER.info('Custom apache log file is set ' + opt.apacheLogFilePath)
-            self.apacheLogFilePath = opt.apacheLogFilePath
+            files = opt.apacheLogFilePath.split(',')
+            self.apacheLogFilePath = files
         else:
-            self.apacheLogFilePath = '/var/log/apache2/access.log'
+            self.apacheLogFilePath = ['/var/log/apache2/access.log']
 
         if opt and opt.outputFilePath:
             self.outputFilePath = opt.outputFilePath

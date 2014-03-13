@@ -8,10 +8,14 @@ LOGGER = logging.getLogger(__name__)
 
 class ApacheLogsParser():
 
-    def __init__(self, apacheLogFilePath = '/var/log/apache2/access.log'):
+    def __init__(self, apacheLogFilePath = None):
         logging.info('creating ApacheLogsParser')
         self.lastModifyed = 0
         self.lastLine = 0
+
+        if apacheLogFilePath is None:
+            LOGGER.critical('apache logs file not defined')
+
         self.apacheLogFilePath = apacheLogFilePath
 
     def load_log_file(self, filename, line = 0):
@@ -40,9 +44,11 @@ class ApacheLogsParser():
 
     def parse(self):
         urls = []
+        logsList = []
         try:
+            for logFile in self.apacheLogFilePath:
+                logsList.extend( self.load_log_file(logFile))
 
-            logsList = self.load_log_file(self.apacheLogFilePath)
             if logsList is not None:
                 for line in logsList:
                     url = map(';'.join, re.findall(r'([(\d\.)]+) - - \[(.*?)\] "(.*?)"', line))
