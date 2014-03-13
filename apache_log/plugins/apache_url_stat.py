@@ -47,7 +47,9 @@ class ApacheLogsParser():
         logsList = []
         try:
             for logFile in self.apacheLogFilePath:
-                logsList.extend( self.load_log_file(logFile))
+                log = self.load_log_file(logFile)
+                if log is not None:
+                    logsList.extend( log )
 
             if logsList is not None:
                 for line in logsList:
