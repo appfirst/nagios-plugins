@@ -21,14 +21,13 @@ class UrlsCounter():
             f.close()
 
     def stringFormatter(self, item, url):
-        return '[' + item['date'] + ']  [AF_UrlRequestCount] ' + str(item['count']) + ' - ' + url + os.linesep
+        return ':AF_UrlRequestCount [' + item['date'] + ']' + str(item['count']) + ' - ' + url + os.linesep
 
     def append_to_file(self, urls):
         if len(urls) > 0:
             f = file(self.outputFilePath, "a")
             for url in urls:
                 s = self.stringFormatter(urls[url], url);
-                #urls[url]['date'] + ' | ' + str(urls[url]['count']) + ' | ' + url + os.linesep
                 LOGGER.info(s)
                 f.write(s)
 
