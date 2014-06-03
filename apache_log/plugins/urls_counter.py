@@ -21,7 +21,7 @@ class UrlsCounter():
             f.close()
 
     def stringFormatter(self, item, url):
-        return ':AF_UrlRequestCount [' + item['date'] + ']' + str(item['count']) + ' - ' + url + os.linesep
+        return ':AF_UrlRequestCount: [' + item['date'] + ']' + str(item['count']) + ' - ' + url + os.linesep
 
     def append_to_file(self, urls):
         if len(urls) > 0:
