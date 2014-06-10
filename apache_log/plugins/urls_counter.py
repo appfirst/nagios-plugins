@@ -8,32 +8,36 @@ LOGGER = logging.getLogger(__name__)
 
 class UrlsCounter():
 
-    def __init__(self, outputFilePath):
+    def __init__(self, outputFilePath, tags = None):
         logging.info('creating UrlsCounter')
         self.outputFilePath = outputFilePath
         self.check_output_file()
 
+        self.tagsEnabled = tags
+
     def check_output_file(self):
-        if os.path.isfile(self.outputFilePath):
-            LOGGER.info('file exist ' + self.outputFilePath)
-        else:
-            f = file(self.outputFilePath, "w")
+        if not os.path.isfile(self.outputFilePath):
+            f = file(self.outputFilePath, 'w')
             f.close()
 
     def stringFormatter(self, item, url):
-        return ':AF_UrlRequestCount: [' + item['date'] + ']' + str(item['count']) + ' - ' + url + os.linesep
+        tag = ''
+        if self.tagsEnabled:
+            if len(self.tagsEnabled) > 1:
+                tag = self.tagsEnabled
+            else:
+                tag = ':AF_UrlRequestCount:'
+        return tag + ' [' + item['date'] + ']' + str(item['count']) + ' - ' + url + os.linesep
 
     def append_to_file(self, urls):
         if len(urls) > 0:
-            f = file(self.outputFilePath, "a")
+            f = file(self.outputFilePath, 'a')
             for url in urls:
                 s = self.stringFormatter(urls[url], url);
                 LOGGER.info(s)
                 f.write(s)
 
             f.close()
-
-
 
 
     def update(self, urls):

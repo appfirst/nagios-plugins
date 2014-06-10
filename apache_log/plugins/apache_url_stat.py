@@ -6,6 +6,7 @@ import re
 
 LOGGER = logging.getLogger(__name__)
 
+
 class ApacheLogsParser():
 
     def __init__(self, apacheLogFilePath = None):

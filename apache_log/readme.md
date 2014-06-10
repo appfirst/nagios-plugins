@@ -16,6 +16,9 @@ to start daemon:
 and to stop:
     `python af_alogs.py stop`
 
+to get current state of daemon and count of urls:
+    `python af_alogs.py status`
+
 
 Configuration flags
 -----------
@@ -24,3 +27,5 @@ Configuration flags
 `--apache-log-file-path` - Path to apache log file , by default `/var/log/apache2/access.log`
 
 `--output-log-file-path` - Path to file where urls count will be saved, by default `af_apache_visited_urls.log`
+
+`--tags` - Enable tags for log file, should be in format like :AF_TAG_NAME:
