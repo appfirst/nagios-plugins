@@ -5,9 +5,6 @@ A module parse apche access log files and calculates
 number of visitited urls and store that data in specifyed file,
 by default af_apache_visited_urls.log in folder where script located.
 
-*Dependencies*
-* Requires python module: python-daemon
-    `sudo apt-get install python-daemon`
 
 * `python af_alogs.py -h` will detail configuration flags
 
