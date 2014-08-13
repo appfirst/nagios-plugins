@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+	<comment>
+	   List of SQLs to get metrics from oracle DB
+	</comment>
+	
+	<!-- 
+	    SQL Service Response Time 0: CentiSeconds Per Call
+		Database Wait Time Ratio 0: % Wait/DB_Time
+		Session Count 31: Sessions
+		I/O Megabytes per Second 0: Megabtyes per Second
+		I/O Requests per Second 2: Requests per Second
+		Average Active Sessions 0: Active Sessions
+	 -->
+	<entry key="sysmetric">
+       <![CDATA[
+            SELECT metric_name,
+            value,
+            metric_unit
+            FROM v$sysmetric
+            WHERE group_id = 2
+                AND metric_name LIKE'%[!LIKE]%';
+            
+       ]]>
+    </entry>
+	 
+	<entry key="cpu">
+	   <![CDATA[
+			SELECT metric_name,
+			value,
+			metric_unit
+			FROM v$sysmetric
+			WHERE group_id = 2
+			    AND metric_name LIKE'%CPU%';
+			
+	   ]]>
+	</entry>
+    
+    <!-- 
+        AND metric_name LIKE'%CPU%';
+        
+        ash.sample_time > (systimestamp  - interval '10' minute)
+                   AND ash.sample_time < (systimestamp)
+                   AND
+     -->
+     
+     <!--
+
+       -->
+	<entry key="sql_list">
+	   <![CDATA[
+	    SELECT ash.sql_id,
+	           s.sql_id,
+	           ss.username,
+	           ash.sample_time,
+	           s.elapsed_time,
+	           s.sql_text,
+	           s.executions,
+	           s.last_active_time,
+	           s.COMMAND_TYPE
+	    FROM v$active_session_history ash,
+	         v$sql s,
+	         v$session ss
+	    WHERE s.last_active_time BETWEEN sysdate - interval '[!PERIOD]' MINUTE AND sysdate
+	      AND ash.session_id IN ss.sid 
+	      AND ash.session_type = 'FOREGROUND'
+	      AND ash.SESSION_STATE = 'WAITING'
+	      AND ash.sql_opcode > 0
+	      AND ash.is_awr_sample = 'Y'
+	      AND ss.username = '[!USERNAME]'
+	      AND s.parsing_schema_name = '[!USERNAME]'
+	    GROUP BY ash.sql_id,
+	           s.sql_id,
+	           ss.username,
+	           ash.sample_time,
+	           s.elapsed_time,
+	           s.sql_text,
+	           s.executions,
+	           s.last_active_time,
+	           s.COMMAND_TYPE;
+		]]>
+	</entry>
+	
+	<entry key="sql_list_1">
+	   <![CDATA[
+			SELECT  C.SQL_TEXT,
+			        B.NAME,
+			        COUNT(*),
+			        SUM(TIME_WAITED)
+			FROM    v$ACTIVE_SESSION_HISTORY A,
+			        v$EVENT_NAME B,
+			        v$SQLAREA C
+			WHERE   A.SAMPLE_TIME BETWEEN '14-APR-22 12:00:19 PM' AND
+			                              '14-APR-23 02:03:19 PM' AND
+			        A.EVENT# = B.EVENT# AND
+			        A.SESSION_ID= 123 AND
+			        A.SQL_ID = C.SQL_ID
+			GROUP BY C.SQL_TEXT, B.NAME;
+		]]>
+	</entry>
+</properties>
+
+
+
