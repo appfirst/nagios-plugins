@@ -17,6 +17,7 @@ to get current state of daemon and count of urls:
     `python af_alogs.py status`
 
 
+
 Configuration flags
 -----------
 `--interval` - interval in seconds to ask apache access logs about updates, by default 60 sec
@@ -26,3 +27,10 @@ Configuration flags
 `--output-log-file-path` - Path to file where urls count will be saved, by default `af_apache_visited_urls.log`
 
 `--tags` - Enable tags for log file, should be in format like :AF_TAG_NAME:
+
+
+Example
+-----------
+command example to use at "Polled Data Config"
+
+    command[mysql_slow_queries]=python /usr/share/appfirst/plugins/libexec/apache_log/af_alogs.py status
