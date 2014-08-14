@@ -33,4 +33,4 @@ Example
 -----------
 command example to use at "Polled Data Config"
 
-    command[mysql_slow_queries]=python /usr/share/appfirst/plugins/libexec/apache_log/af_alogs.py status
+    command[apache_log]=python /usr/share/appfirst/plugins/libexec/apache_log/af_alogs.py status
