@@ -137,13 +137,13 @@ class App(Daemon):
 
 def sendStatsD():
 
-    LOGGER.debug('sendStatsD')
+    LOGGER.debug('creating thread to send statsD ')
     if options and options.apacheHostName:
-        apacheHostName = opt.apacheHostName
+        apacheHostName = options.apacheHostName
+        LOGGER.debug('apacheHostName is set to: ' + apacheHostName)
     else:
         apacheHostName = None
 
-    LOGGER.debug('creating thread to send statsD')
     statsdSender = StatsdSender(apacheHostName = apacheHostName)
     statsdSender.start()
     statsdSender.join()
@@ -195,8 +195,7 @@ if __name__ == '__main__':
                 LOGGER.debug (msg)
                 if client is not None:
                     client.close()
-                # daemon = App('/tmp/af-apache-url-logs.pid', stdout='/dev/console', stderr='/dev/console')
-                # daemon.start()
+
             exit(0)
 
 
