@@ -8,10 +8,11 @@ LOGGER = logging.getLogger(__name__)
 
 class UrlsCounter():
 
-    def __init__(self, outputFilePath, tags = None):
+    def __init__(self, outputFilePath, tags = None, statsdPrefix = 'apache_url_counter'):
         logging.info('creating UrlsCounter')
         self.outputFilePath = outputFilePath
         self.check_output_file()
+        self.statsdPrefix = statsdPrefix
 
         self.tagsEnabled = tags
 
@@ -27,18 +28,17 @@ class UrlsCounter():
                 tag = self.tagsEnabled
             else:
                 tag = ':AF_UrlRequestCount:'
-        return tag + ' [' + item['date'] + ']' + str(item['count']) + ' - ' + url + os.linesep
+        return tag + ' [' + item['date'] + '] ' + str(item['count']) + ' - ' + url + os.linesep
 
     def append_to_file(self, urls):
         if len(urls) > 0:
             f = file(self.outputFilePath, 'a')
             for url in urls:
                 s = self.stringFormatter(urls[url], url);
-                LOGGER.info(s)
+                #LOGGER.info(s)
                 f.write(s)
 
             f.close()
-
 
     def update(self, urls):
         urlsCount = {}
@@ -52,5 +52,7 @@ class UrlsCounter():
                     urlsCount[url['url']]['date'] = url['date']
                     urlsCount[url['url']]['count'] += 1
 
+
             self.append_to_file(urlsCount)
+        return urlsCount
 

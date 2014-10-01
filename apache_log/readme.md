@@ -27,6 +27,8 @@ Configuration flags
 `--output-log-file-path` - Path to file where urls count will be saved, by default `af_apache_visited_urls.log`
 
 `--tags` - Enable tags for log file, should be in format like :AF_TAG_NAME:
+`--apache-host` - Enable tags for log file, should be in format like :AF_TAG_NAME:
+parser.add_argument('-a','--apache-host', dest='apacheHostName', help='Apache hostname will be included in statsD counter name')
 
 
 Example

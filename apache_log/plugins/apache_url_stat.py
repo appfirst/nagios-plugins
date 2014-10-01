@@ -13,6 +13,7 @@ class ApacheLogsParser():
         logging.info('creating ApacheLogsParser')
         self.lastModifyed = 0
         self.lastLine = 0
+        self.created = None
 
         if apacheLogFilePath is None:
             LOGGER.critical('apache logs file not defined')
@@ -24,14 +25,22 @@ class ApacheLogsParser():
         f = None
         if os.path.isfile(filename):
             try:
+                LOGGER.debug('reading log file ' + filename)
                 lm = os.path.getmtime(filename)
+
+                LOGGER.debug('checking last modification of a file ' + filename + ' ' + str(lm))
                 if lm > self.lastModifyed:
-                    f = file(filename, "r")
+                    f = file(filename, 'r')
                     lines = f.readlines()
                     currentLinesNumber = len(lines)
-                    LOGGER.debug('currentLinesNumber ' + str(currentLinesNumber))
+
+                    if (currentLinesNumber < self.lastLine):
+                        LOGGER.debug('reseting last line number from ' + str(self.lastLine) + ' to 0')
+                        self.lastLine = 0
+
+                    LOGGER.debug('total records in apache log file ' + str(currentLinesNumber))
+                    LOGGER.debug('last parsed record(line) ' + str(self.lastLine))
                     if currentLinesNumber > self.lastLine:
-                        LOGGER.debug('lastLine' + str(self.lastLine))
                         data = lines[self.lastLine : currentLinesNumber]
                         self.lastLine = len(lines)
                     self.lastModifyed = lm
@@ -61,7 +70,7 @@ class ApacheLogsParser():
                         u = a[2].split(' ')
                         obj = {'date': a[1], 'url': u[1]}
                         urls.append(obj)
-                        LOGGER.debug(obj)
+                        # LOGGER.debug(obj)
                     else:
                         logging.info('no new urls was found')
             else:

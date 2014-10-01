@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 class ProcessThread(Thread):
 
 
-    def __init__(self, host = '127.0.0.1', port = 30310):
+    def __init__(self, host = '127.0.0.1', port = 30330):
         super(ProcessThread, self).__init__()
         self.running = True
         self._socket = None
@@ -34,7 +34,7 @@ class ProcessThread(Thread):
     def checkData(self):
 
         try:
-            LOGGER.debug ('socket accept')
+            LOGGER.debug ('checking data...')
             client, addr = self._socket.accept()
             ready = select.select([client,],[], [],2)
             if ready[0]:
@@ -64,11 +64,11 @@ class ProcessThread(Thread):
 
             self._socket.bind((self.host, self.port))
             LOGGER.debug('Listening on {h} {p}...'.format(p = self.port, h = self.host))
-            self._socket.listen(10)
+            self._socket.listen(1)
 
         while self.running:
             try:
-                LOGGER.debug('server running ...')
+                LOGGER.debug('server is running ...')
                 self.checkData()
                 # time.sleep(1)
             except KeyboardInterrupt:
