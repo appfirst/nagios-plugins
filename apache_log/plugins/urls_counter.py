@@ -9,7 +9,7 @@ LOGGER = logging.getLogger(__name__)
 class UrlsCounter():
 
     def __init__(self, outputFilePath, tags = None, statsdPrefix = 'apache_url_counter'):
-        logging.info('creating UrlsCounter')
+        logging.debug('creating UrlsCounter to file ' + outputFilePath)
         self.outputFilePath = outputFilePath
         self.check_output_file()
         self.statsdPrefix = statsdPrefix
@@ -31,18 +31,24 @@ class UrlsCounter():
         return tag + ' [' + item['date'] + '] ' + str(item['count']) + ' - ' + url + os.linesep
 
     def append_to_file(self, urls):
+        logging.debug('uppending to file ' + self.outputFilePath)
         if len(urls) > 0:
-            f = file(self.outputFilePath, 'a')
-            for url in urls:
-                s = self.stringFormatter(urls[url], url);
-                #LOGGER.info(s)
-                f.write(s)
+            try:
+                f = file(self.outputFilePath, 'a')
+                for url in urls:
+                    s = self.stringFormatter(urls[url], url);
+                    #LOGGER.info(s)
+                    f.write(s)
 
-            f.close()
+                f.close()
+            except Exception as e:
+                LOGGER.critical('Serious Error occured: %s', e)
+
+
 
     def update(self, urls):
         urlsCount = {}
-
+	logging.debug('updating to file ' + self.outputFilePath)
         if len(urls) > 0:
 
             for url in urls:

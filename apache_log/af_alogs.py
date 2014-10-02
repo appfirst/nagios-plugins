@@ -56,6 +56,7 @@ class App(Daemon):
             self.apacheLogFilePath = ['/var/log/apache2/access.log']
 
         if opt and opt.outputFilePath:
+            LOGGER.info('Custom output file is set ' + opt.outputFilePath)
             self.outputFilePath = opt.outputFilePath
         else:
             scriptPath = os.path.realpath(__file__)
@@ -67,9 +68,12 @@ class App(Daemon):
 
 
         #
-        self.parser = ApacheLogsParser(apacheLogFilePath = self.apacheLogFilePath)
-        self.urlsCounter = UrlsCounter(self.outputFilePath, tags = self.tagsEnabled, statsdPrefix = 'apache_url_counter')
-
+        try:
+            self.parser = ApacheLogsParser(apacheLogFilePath = self.apacheLogFilePath)
+            self.urlsCounter = UrlsCounter(self.outputFilePath, tags = self.tagsEnabled, statsdPrefix = 'apache_url_counter')
+        except Exception as e:
+            LOGGER.critical('Serious Error occured: %s', e)
+        
     def sendStatsD(self, pklData = None):
 
         LOGGER.debug('creating thread to send statsD ')
