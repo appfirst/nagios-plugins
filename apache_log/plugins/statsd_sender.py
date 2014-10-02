@@ -67,7 +67,7 @@ class StatsdSender(threading.Thread):
     def increment(self, statsd, name, val):
 
         while val > 0:
-            statsd.increment(name, val)
+            statsd.increment(name)
             val = val - 1
 
     def sendCountOfUrls(self, Statsd, urls):
