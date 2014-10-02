@@ -63,7 +63,7 @@ class ApacheLogsParser():
 
             if logsList is not None:
                 for line in logsList:
-                    url = map(';'.join, re.findall(r'([(\d\.)]+) - - \[(.*?)\] "(.*?)"', line))
+                    url = map(';'.join, re.findall(r'([(\d\.)]+) - - (.*?) "(.*?)"', line))
 
                     if len(url) > 0:
                         a = url[0].split(';')
