@@ -1,0 +1,3 @@
+2014-10-02 12:58:11,470 - __main__ - DEBUG - #connecting to 127.0.0.1 30330 to get status...
+2014-10-02 12:58:11,471 - __main__ - DEBUG - exception msg
+2014-10-02 12:58:11,471 - __main__ - DEBUG - [Errno 111] Connection refused
