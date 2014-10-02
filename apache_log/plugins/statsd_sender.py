@@ -3,27 +3,31 @@ import sys
 import logging
 import os
 import re
-from threading import Thread
-from afstatsd import Statsd, AFTransport
+import threading
 import pickle
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class StatsdSender(Thread):
+class StatsdSender(threading.Thread):
 
-    def __init__(self, apacheHostName = None):
+    def __init__(self, apacheHostName = None, pklData = None):
         super(StatsdSender, self).__init__()
+
+        LOGGER.debug('init StatsdSender')
+
+
         self.urlsSumm = None
         self.urls = None
 
         try:
-            pklFile = open('/tmp/data.pkl', 'rb')
-            pklData = pickle.load(pklFile)
+            if pklData is None:
+                pklFile = open('/tmp/data.pkl', 'rb')
+                pklData = pickle.load(pklFile)
 
-            LOGGER.info('reading pickle data')
-            LOGGER.info(pklData)
+                LOGGER.info('reading pickle data')
+
             if pklData is not None:
 
                 self.urlsSumm = pklData['urlsSumm']
@@ -34,6 +38,7 @@ class StatsdSender(Thread):
             LOGGER.critical('Serious Error occured: %s', e)
 
         self.running = True
+        self.stoprequest = threading.Event()
         LOGGER.info('creating StatsdSender')
         self.apacheHostName = apacheHostName
 
@@ -57,7 +62,7 @@ class StatsdSender(Thread):
             url = url[0:index]
         return url
 
-    def sendCountOfUrls(self, urls):
+    def sendCountOfUrls(self, Statsd, urls):
 
         LOGGER.debug('sendCountOfUrls')
 
@@ -68,25 +73,37 @@ class StatsdSender(Thread):
                 LOGGER.debug('setting gauge ' + name + ' to %d' %  val['count'])
                 Statsd.gauge(name, val['count'])
 
-    def sendSummOfUrls(self, urls):
+    def sendSummOfUrls(self, Statsd, urls):
         name = self.getBaseName()
         Statsd.gauge(name, len(urls))
 
     def run(self):
-        LOGGER.debug('run StatsdSender')
-        # Statsd.set_transport(AFTransport(logger=LOGGER))
-        if self.urlsSumm is not None:
-            self.sendCountOfUrls(self.urlsSumm)
 
-        if self.urls is not None:
-            self.sendSummOfUrls(self.urls)
+        try:
 
-    def stop(self):
+            LOGGER.debug('run StatsdSender')
+            from afstatsd import Statsd, AFTransport
+            # Statsd.set_transport(AFTransport(logger=LOGGER, verbosity=True))
 
-        LOGGER.debug('trying to stop thread')
-        if self.running is not None:
-            self.running = None
-            self.stop()
+            if self.urlsSumm is not None:
+                self.sendCountOfUrls(Statsd, self.urlsSumm)
+
+            if self.urls is not None:
+                self.sendSummOfUrls(Statsd, self.urls)
+
+            if self.isAlive():
+                LOGGER.debug('statsD thread NOT stoped')
+            else:
+                LOGGER.debug('statsD thread stoped')
+
+        except Exception as e:
+            LOGGER.critical('Serious Error occured: %s', e)
+
+
+    def join(self, timeout=None):
+        self.stoprequest.set()
+        self.running = None
+        super(StatsdSender, self).join(timeout)
 
 
 

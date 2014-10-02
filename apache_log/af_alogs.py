@@ -70,6 +70,24 @@ class App(Daemon):
         self.parser = ApacheLogsParser(apacheLogFilePath = self.apacheLogFilePath)
         self.urlsCounter = UrlsCounter(self.outputFilePath, tags = self.tagsEnabled, statsdPrefix = 'apache_url_counter')
 
+    def sendStatsD(self, pklData = None):
+
+        LOGGER.debug('creating thread to send statsD ')
+        if options and options.apacheHostName:
+            apacheHostName = options.apacheHostName
+            LOGGER.debug('apacheHostName is set to: ' + apacheHostName)
+        else:
+            apacheHostName = None
+
+
+        statsdSender = StatsdSender(apacheHostName = apacheHostName, pklData = pklData)
+        statsdSender.start()
+        LOGGER.debug('stoping statsD thread...')
+        statsdSender.join()
+        if statsdSender.isAlive():
+            LOGGER.debug('statsD thread NOT stoped')
+        else:
+            LOGGER.debug('statsD thread stoped')
 
     def stop(self):
 
@@ -108,9 +126,13 @@ class App(Daemon):
 
                             LOGGER.info('serealizing data to pkl file')
                             pklFile = open('/tmp/data.pkl', 'wb')
+
+                            pklData = {'urls': urls, 'urlsSumm': urlsSumm}
                             # Pickle dictionary using protocol 0.
-                            pickle.dump({'urls': urls, 'urlsSumm': urlsSumm}, pklFile)
+                            pickle.dump(pklData, pklFile)
                             pklFile.close()
+
+                            self.sendStatsD(pklData = pklData)
 
                             self.isDataPolled = False
                             LOGGER.debug(' new urls %d ', len(urls))
@@ -124,7 +146,7 @@ class App(Daemon):
                     time.sleep(1)
                     i = i + 1
                 except Exception as msg:
-                    print 'AF.APACHE.URLS.COUNTER CRITICAL - daemon error'
+                    print 'AF.APACHE.URLS.COUNTER critical - daemon error'
                     LOGGER.debug (msg)
 
         else:
@@ -135,22 +157,8 @@ class App(Daemon):
         LOGGER.debug (self.urlsLength)
 
 
-def sendStatsD():
 
-    LOGGER.debug('creating thread to send statsD ')
-    if options and options.apacheHostName:
-        apacheHostName = options.apacheHostName
-        LOGGER.debug('apacheHostName is set to: ' + apacheHostName)
-    else:
-        apacheHostName = None
 
-    statsdSender = StatsdSender(apacheHostName = apacheHostName)
-    statsdSender.start()
-    statsdSender.join()
-    if statsdSender.isAlive():
-        LOGGER.debug('statsD thread NOT stoped')
-    else:
-        LOGGER.debug('statsD thread stoped')
 
 
 if __name__ == '__main__':
@@ -171,6 +179,7 @@ if __name__ == '__main__':
 
         if sys.argv[1] == 'status':
             try:
+                # @TODO we can use pklData
                 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
                 LOGGER.debug('#connecting to {h} {p} to get status...'.format(p = PORT, h = HOSTNAME))
@@ -183,14 +192,14 @@ if __name__ == '__main__':
 
                 client.shutdown(socket.SHUT_RDWR)
                 client.close()
-                sendStatsD()
+                # sendStatsD()
                 # PING ok - Packet loss = 0%, RTA = 0.80 ms | percent_packet_loss=0, rta=0.80
                 if (data == '-1'):
                     print('AF.APACHE.URLS.COUNTER ok')
                 else:
                     print ('AF.APACHE.URLS.COUNTER ok - urls count = ' + data + ' | urls_count=' + data)
             except Exception as msg:
-                print 'AF.APACHE.URLS.COUNTER WARN - daemon not runining'
+                print 'AF.APACHE.URLS.COUNTER warn - daemon not runining'
                 LOGGER.debug ('exception msg')
                 LOGGER.debug (msg)
                 if client is not None:
