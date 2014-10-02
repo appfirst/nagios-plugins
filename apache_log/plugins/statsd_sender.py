@@ -20,20 +20,22 @@ class StatsdSender(threading.Thread):
 
         self.urlsSumm = None
         self.urls = None
+        self.pklData = pklData
 
         try:
-            if pklData is None:
+            if self.pklData is None:
                 pklFile = open('/tmp/data.pkl', 'rb')
-                pklData = pickle.load(pklFile)
+                self.pklData = pickle.load(pklFile)
+                pklFile.close()
 
                 LOGGER.info('reading pickle data')
 
-            if pklData is not None:
+            if self.pklData is not None:
 
-                self.urlsSumm = pklData['urlsSumm']
-                self.urls = pklData['urls']
+                self.urlsSumm = self.pklData['urlsSumm']
+                self.urls = self.pklData['urls']
 
-            pklFile.close()
+
         except Exception as e:
             LOGGER.critical('Serious Error occured: %s', e)
 
@@ -62,6 +64,12 @@ class StatsdSender(threading.Thread):
             url = url[0:index]
         return url
 
+    def increment(self, statsd, name, val):
+
+        while val > 0:
+            statsd.increment(name, val)
+            val = val - 1
+
     def sendCountOfUrls(self, Statsd, urls):
 
         LOGGER.debug('sendCountOfUrls')
@@ -70,12 +78,12 @@ class StatsdSender(threading.Thread):
             if key is not '*':
                 name = self.getBaseName() + '.' + self.convertUrlToName(key)
                 LOGGER.debug('converting url ' + key + ' to counter name ' + name)
-                LOGGER.debug('setting gauge ' + name + ' to %d' %  val['count'])
-                Statsd.gauge(name, val['count'])
+                LOGGER.debug('setting counter ' + name + ' to %d' %  val['count'])
+                self.increment(Statsd, name, val['count'])
 
     def sendSummOfUrls(self, Statsd, urls):
         name = self.getBaseName()
-        Statsd.gauge(name, len(urls))
+        self.increment(Statsd, name, len(urls))
 
     def run(self):
 

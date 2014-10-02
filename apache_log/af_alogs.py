@@ -127,12 +127,11 @@ class App(Daemon):
                             LOGGER.info('serealizing data to pkl file')
                             pklFile = open('/tmp/data.pkl', 'wb')
 
-                            pklData = {'urls': urls, 'urlsSumm': urlsSumm}
                             # Pickle dictionary using protocol 0.
-                            pickle.dump(pklData, pklFile)
+                            pickle.dump({'urls': urls, 'urlsSumm': urlsSumm}, pklFile)
                             pklFile.close()
 
-                            self.sendStatsD(pklData = pklData)
+                            self.sendStatsD(pklData = {'urls': urls, 'urlsSumm': urlsSumm})
 
                             self.isDataPolled = False
                             LOGGER.debug(' new urls %d ', len(urls))
