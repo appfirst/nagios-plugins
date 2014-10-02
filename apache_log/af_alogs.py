@@ -11,10 +11,8 @@ from plugins.urls_counter import UrlsCounter
 from plugins.statsd_sender import StatsdSender
 from plugins.daemon import Daemon
 from plugins.app_thread import ProcessThread
-#from daemon import runner
 import socket
 import pickle
-#from random import randint
 
 
 

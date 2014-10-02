@@ -16,7 +16,10 @@ and to stop:
 to get current state of daemon and count of urls:
     `python af_alogs.py status`
 
-
+Dependensis:
+-----------
+afstatsd
+    `pip install afstatsd`
 
 Configuration flags
 -----------
