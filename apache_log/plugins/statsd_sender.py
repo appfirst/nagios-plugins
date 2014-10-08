@@ -54,10 +54,8 @@ class StatsdSender(threading.Thread):
 
     def convertUrlToName(self, url):
 
-        # LOGGER.debug('convertUrlToName ' + url)
         url = url.replace ('http://', '')
         url = url.replace ('https://', '')
-        # url = url.replace ('/', '_')
         url = url.replace (' ', '')
         index = url.find('?')
         if index > 0:
@@ -76,7 +74,7 @@ class StatsdSender(threading.Thread):
 
         for key, val in urls.iteritems():
             if key is not '*':
-                name = self.getBaseName() + '.' + self.convertUrlToName(key)
+                name = self.convertUrlToName(key)
                 LOGGER.debug('converting url ' + key + ' to counter name ' + name)
                 LOGGER.debug('setting counter ' + name + ' to %d' %  val['count'])
                 self.increment(Statsd, name, val['count'])
