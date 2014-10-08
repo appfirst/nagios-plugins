@@ -57,7 +57,7 @@ class StatsdSender(threading.Thread):
         # LOGGER.debug('convertUrlToName ' + url)
         url = url.replace ('http://', '')
         url = url.replace ('https://', '')
-        url = url.replace ('/', '_')
+        # url = url.replace ('/', '_')
         url = url.replace (' ', '')
         index = url.find('?')
         if index > 0:
@@ -83,7 +83,7 @@ class StatsdSender(threading.Thread):
 
     def sendSummOfUrls(self, Statsd, urls):
         name = self.getBaseName()
-        self.increment(Statsd, name, len(urls))
+        Statsd.gauge(name, len(urls))
 
     def run(self):
 
