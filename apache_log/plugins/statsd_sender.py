@@ -46,9 +46,9 @@ class StatsdSender(threading.Thread):
 
 
     def getBaseName(self):
-        name = 'af_url_counter'
+        name = ''
         if self.apacheHostName is not None:
-            name = name + '.' + self.apacheHostName
+            name = self.apacheHostName + '.'
 
         return name
 
@@ -60,6 +60,9 @@ class StatsdSender(threading.Thread):
         index = url.find('?')
         if index > 0:
             url = url[0:index]
+
+        if url[0] is '/':
+            url = url[1:]
         return url
 
     def increment(self, statsd, name, val):
@@ -74,14 +77,14 @@ class StatsdSender(threading.Thread):
 
         for key, val in urls.iteritems():
             if key is not '*':
-                name = self.convertUrlToName(key)
+                name = elf.getBaseName() + self.convertUrlToName(key)
                 LOGGER.debug('converting url ' + key + ' to counter name ' + name)
                 LOGGER.debug('setting counter ' + name + ' to %d' %  val['count'])
                 self.increment(Statsd, name, val['count'])
 
     def sendSummOfUrls(self, Statsd, urls):
         name = self.getBaseName()
-        Statsd.gauge(name, len(urls))
+        Statsd.gauge('af_url_counter.' + name, len(urls))
 
     def run(self):
 

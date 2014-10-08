@@ -35,7 +35,7 @@ class Options(object):
         logger_components = [logger]
         logger_components.append(LOGGER)
         logger_components.append(logging.getLogger(name='plugins.apache_url_stat'))
-        #logger_components.append(logging.getLogger(name='plugins.urls_counter'))
+        logger_components.append(logging.getLogger(name='plugins.urls_counter'))
         logger_components.append(logging.getLogger(name='plugins.app_thread'))
         logger_components.append(logging.getLogger(name='plugins.statsd_sender'))
         logger_components.append(logging.getLogger(name='plugins.urls_counter'))
