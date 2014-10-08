@@ -77,7 +77,7 @@ class StatsdSender(threading.Thread):
 
         for key, val in urls.iteritems():
             if key is not '*':
-                name = elf.getBaseName() + self.convertUrlToName(key)
+                name = self.getBaseName() + self.convertUrlToName(key)
                 LOGGER.debug('converting url ' + key + ' to counter name ' + name)
                 LOGGER.debug('setting counter ' + name + ' to %d' %  val['count'])
                 self.increment(Statsd, name, val['count'])
