@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
 Created on Jun 11, 2012
+Updated on September 19, 2014 by Tony Ling
 
 @author: Yangming
 '''
@@ -85,19 +86,67 @@ class MemcachedChecker(nagios.BatchStatusPlugin):
     @statsd.gauge
     def get_bytes_allocated(self, request):
         value = self.get_status_value("bytes", request)
-        return self.get_result(request, value, '%s bytes allocated' % value, 'bytes_allocated')
+        return self.get_result(request, value, '%s bytes allocated' % value, 'bytes')
 
     @plugin.command("TOTAL_ITEMS")
     @statsd.gauge
     def get_total_items(self, request):
         value = self.get_status_value("total_items", request)
-        return self.get_result(request, value, '%s total items' % value, 'items')
+        return self.get_result(request, value, '%s total items' % value, 'total_items')
 
     @plugin.command("CURRENT_CONNECTIONS")
     @statsd.gauge
     def get_current_connections(self, request):
         value = self.get_status_value("curr_connections", request)
         return self.get_result(request, value, '%s current connections' % value, "connections")
+
+    @plugin.command("CACHE_EVICTIONS")
+    @statsd.gauge
+    def get_cache_evictions(self, request):
+        value = self.get_status_value("evictions", request)
+        return self.get_result(request, value, '%s cache evictions' % value, "evictions")
+
+    @plugin.command("CACHE_RECLAIMED")
+    @statsd.gauge
+    def get_cache_reclaimed(self, request):
+        value = self.get_status_value("reclaimed", request)
+        return self.get_result(request, value, '%s cache reclaimed' % value, "reclaimed")
+
+    @plugin.command("OPERATIONS_FLUSH_REQUESTS")
+    @statsd.counter
+    def get_cmd_flush(self, request):
+        value = self.get_delta_value("cmd_flush", request)
+        return self.get_result(request, value, '%s flush requests' % value, 'cmd_flush')
+
+    @plugin.command("OPERATIONS_TOUCH_REQUESTS")
+    @statsd.counter
+    def get_cmd_touch(self, request):
+        value = self.get_delta_value("cmd_touch", request)
+        return self.get_result(request, value, '%s touch requests' % value, 'cmd_touch')
+
+    @plugin.command("CURRENT_ITEMS")
+    @statsd.counter
+    def get_current_items(self, request):
+        value = self.get_status_value("curr_items", request)
+        return self.get_result(request, value, '%s current items' % value, 'curr_items')
+
+    @plugin.command("HIT_RATIO")
+    @statsd.counter
+    def get_hit_ratio(self, request):
+        hits = self.get_status_value("get_hits", request)
+        misses = self.get_status_value("get_misses", request)
+	total = hits+misses
+	if (total > 0):
+		value = (hits*1.0)/(total)
+	else:
+		value = 0
+        return self.get_result(request, value, '%s hit ratio' % value, 'hit_ratio')
+
+    @plugin.command("THREADS")
+    @statsd.counter
+    def get_threads(self, request):
+        value = self.get_delta_value("threads", request)
+        return self.get_result(request, value, '%s threads' % value, 'threads')
 
 if __name__ == "__main__":
     import sys
