@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
 Created on May 31, 2012
+Updated on August 26, 2014 by Tony Ling
 
 @author: Yangming
 '''
@@ -10,6 +11,7 @@ import statsd
 import nagios
 from nagios import CommandBasedPlugin as plugin
 import argparse
+import subprocess
 
 class RedisChecker(nagios.BatchStatusPlugin):
     def __init__(self, *args, **kwargs):
@@ -57,6 +59,12 @@ class RedisChecker(nagios.BatchStatusPlugin):
         elif output.strip() == "":
             raise nagios.ServiceInaccessibleError(request, output)
         return True
+
+    def _get_metric(self,data, metric):
+	for line in data.split('\r\n'):
+		tokens = line.split(':')
+		if (tokens[0] == metric):
+			return tokens[1]
 
     @plugin.command("CURRENT_OPERATIONS")
     @statsd.counter
@@ -113,6 +121,87 @@ class RedisChecker(nagios.BatchStatusPlugin):
     def get_command_frequency(self, request):
         return nagios.Result(request.option, nagios.Status.UNKNOWN,
                                  "mysterious status", request.appname)
+
+    @plugin.command("CONNECTED_CLIENTS")
+    @statsd.counter
+    def get_connected_clients(self, request):
+	cmd = "redis-cli info"
+	metric = 'connected_clients'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s connected clients" % value, metric)
+
+    @plugin.command("MEMORY_FRAGMENTATION")
+    @statsd.counter
+    def get_mem_fragmentation(self, request):
+	cmd = "redis-cli info"
+	metric = 'mem_fragmentation_ratio'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s Memory fragmentation ratio (used_memory_rss:used_memory)" % value, metric)
+
+    @plugin.command("USED_MEMORY_LUA")
+    @statsd.counter
+    def get_used_mem_lua(self, request):
+	cmd = "redis-cli info"
+	metric = 'used_memory_lua'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s Bytes used by Lua engine" % value, metric)
+
+    @plugin.command("REPLICATION_CONNECTED_SLAVES")
+    @statsd.counter
+    def get_repl_connected_slaves(self, request):
+	cmd = "redis-cli info"
+	metric = 'connected_slaves'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s connected slaves" % value, metric)
+
+    @plugin.command("REPLICATION_ROLE")
+    @statsd.counter
+    def get_repl_role(self, request):
+	cmd = "redis-cli info"
+	metric = 'role'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s replication server role" % value, metric)
+
+    @plugin.command("EVICTED_KEYS")
+    @statsd.counter
+    def get_evicted_keys(self, request):
+	cmd = "redis-cli info"
+	metric = 'evicted_keys'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s keys evicted due to maxmemory limit" % value, metric)
+
+    @plugin.command("EXPIRED_KEYS")
+    @statsd.counter
+    def get_expired_keys(self, request):
+	cmd = "redis-cli info"
+	metric = 'expired_keys'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s key expirations" % value, metric)
+
+    @plugin.command("KEYSPACE_HITS")
+    @statsd.counter
+    def get_keyspace_hits(self, request):
+	cmd = "redis-cli info"
+	metric = 'keyspace_hits'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s successful main dictionary key lookups" % value, metric)
+
+    @plugin.command("KEYSPACE_MISSES")
+    @statsd.counter
+    def get_keyspace_misses(self, request):
+	cmd = "redis-cli info"
+	metric = 'keyspace_misses'
+        output = commands.getoutput(cmd)
+	value = self._get_metric(output, metric)
+        return self.get_result(request, value, "%s failed main dictionary key lookups" % value, metric)
 
 if __name__ == "__main__":
     import sys
