@@ -5,6 +5,7 @@ Created on May 29, 2012
 @author: Yangming
 
 Updated 2013-08 by Mike Okner
+Updated Sept 26, 2014 by Tony Ling
 """
 
 import nagios
@@ -194,6 +195,79 @@ class MySqlChecker(nagios.BatchStatusPlugin):
     def get_queries(self, request):
         value = self.get_delta_value("Queries", request)
         return self.get_result(request, value, '%s queries' % value, 'total')
+
+    @plugin.command("QCACHE_BLOCK_UTILIZATION")
+    @statsd.gauge
+    def get_qcache_block_utilization(self, request):
+        free = self.get_status_value("Qcache_free_blocks", request)
+	total = self.get_status_value("Qcache_total_blocks", request)
+	utilized = float(int(total)-int(free))
+	if total == 0:
+		utilized = 0
+	else:
+		utilized = utilized/float(int(total))
+        return self.get_result(request, utilized, '%s Query cache block percent utilization' % utilized, 'qcache_block_utilization')
+
+    @plugin.command("QCACHE_FREE_BLOCKS")
+    @statsd.gauge
+    def get_qcache_free_blocks(self, request):
+        value = self.get_status_value("Qcache_free_blocks", request)
+        return self.get_result(request, value, '%s Query cache free memory blocks' % value, 'qcache_free_blocks')
+    
+    @plugin.command("QCACHE_TOTAL_BLOCKS")
+    @statsd.gauge
+    def get_qcache_total_blocks(self, request):
+        value = self.get_status_value("Qcache_total_blocks", request)
+        return self.get_result(request, value, '%s Query cache total memory blocks' % value, 'qcache_total_blocks')
+
+
+    @plugin.command("QCACHE_FREE_MEMORY")
+    @statsd.gauge
+    def get_qcache_free_memory(self, request):
+        value = self.get_status_value("Qcache_free_memory", request)
+        return self.get_result(request, value, '%s Query cache free memory' % value, 'qcache_free_memory')
+
+    @plugin.command("QCACHE_HITS")
+    @statsd.gauge
+    def get_qcache_hits(self, request):
+        value = self.get_status_value("Qcache_hits", request)
+        return self.get_result(request, value, '%s Query cache hits' % value, 'qcache_hits')
+
+    @plugin.command("QCACHE_INSERTS")
+    @statsd.gauge
+    def get_qcache_inserts(self, request):
+        value = self.get_status_value("Qcache_inserts", request)
+        return self.get_result(request, value, '%s Queries added to query cache' % value, 'qcache_inserts')
+
+    @plugin.command("QCACHE_QUERIES_IN_CACHE")
+    @statsd.gauge
+    def get_qcache_queries_in_cache(self, request):
+        value = self.get_status_value("Qcache_queries_in_cache", request)
+        return self.get_result(request, value, '%s Queries registered in query cache' % value, 'qcache_queries_in_cache')
+
+    @plugin.command("ROW_LOCKS_CURRENT_WAITS")
+    @statsd.gauge
+    def get_row_locks_current_waits(self, request):
+        value = self.get_status_value("Innodb_row_lock_current_waits", request)
+        return self.get_result(request, value, '%s Row locks currently being waited for' % value, 'row_locks_curent_waits')
+
+    @plugin.command("ROW_LOCKS_TIME_AVERAGE")
+    @statsd.gauge
+    def get_row_locks_current_average(self, request):
+        value = self.get_status_value("Innodb_row_lock_time_avg", request)
+        return self.get_result(request, value, '%s Average time to acquire a row lock (ms)' % value, 'row_locks_time_avg')
+
+    @plugin.command("TABLE_LOCKS_IMMEDIATE")
+    @statsd.gauge
+    def get_table_locks_immediate(self, request):
+        value = self.get_status_value("Table_locks_immediate", request)
+        return self.get_result(request, value, '%s Table locks immediately granted' % value, 'Table_locks_immediate')
+
+    @plugin.command("TABLE_LOCKS_WAITED")
+    @statsd.gauge
+    def get_table_locks_waited(self, request):
+        value = self.get_status_value("Table_locks_waited", request)
+        return self.get_result(request, value, '%s Table locks waits needed' % value, 'Table_locks_waited')
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ Created on Jun 14, 2012
 @author: Yangming
 
 Changed by Tony Ling 7/30/2014 to work with postgreqsql 9.2 -9.3
+Updated Aug 27, 2014 by Tony Ling with code from http://www.bucardo.org/
 '''
 import commands
 import statsd
@@ -52,6 +53,26 @@ class PostgresChecker(nagios.BatchStatusPlugin):
             return value
         else:
             raise nagios.StatusUnknownError(request.option)
+
+    @plugin.command("CONNECTIONS_UTILIZATION")
+    @statsd.gauge
+    def get_connections_utilized(self, request):
+        sql_stmt = "SELECT COUNT(datid) AS current, " \
+	"(SELECT setting AS mc FROM pg_settings WHERE name = 'max_connections') AS mc, " \
+	"  d.datname " \
+	"FROM pg_database d " \
+	"LEFT JOIN pg_stat_activity s ON (s.datid = d.oid) " \
+	"GROUP BY 2,3 " \
+	"ORDER BY datname"
+        values = self.run_query(request, sql_stmt)
+	connections = 0
+	max_connections = 0
+	for db in values:
+	    connections = connections + int(db[0])
+	    max_connections = max_connections + int(db[1])
+	value = float(connections/float(max_connections)) * 100
+        return self.get_result(request, value, '{value}% total connection utilization across all databases'.format(value=value), 'utilization')
+
 
     @plugin.command("DATABASE_SIZE")
     @statsd.gauge
@@ -160,6 +181,37 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         return self.get_result(request, value,
                     '%s tuples deleted' % value, 'total', sub_perfs=sub_stats.iteritems())
 
+    @plugin.command("COMMIT_RATIO")
+    @statsd.counter
+    def get_commit_ratio(self, request):
+        sql_stmt = "SELECT " \
+            "round(100.*sd.xact_commit/(sd.xact_commit+sd.xact_rollback), 2) AS dcommitratio, " \
+            "d.datname, " \
+            "u.usename " \
+            "FROM pg_stat_database sd " \
+            "JOIN pg_database d ON (d.oid=sd.datid) " \
+            "JOIN pg_user u ON (u.usesysid=d.datdba) " \
+            "WHERE sd.xact_commit+sd.xact_rollback<>0"
+        value = self.run_query(request, sql_stmt)[0][0]
+        return self.get_result(request, value,
+                    '{value}% commit ratio'.format(value=value), 'commit_ratio')
+
+    @plugin.command("HIT_RATIO")
+    @statsd.counter
+    def get_hit_ratio(self, request):
+        sql_stmt = "SELECT " \
+            "round(100.*sd.blks_hit/(sd.blks_read+sd.blks_hit), 2) AS dhitratio, " \
+            "d.datname, " \
+            "u.usename " \
+            "FROM pg_stat_database sd " \
+            "JOIN pg_database d ON (d.oid=sd.datid) " \
+            "JOIN pg_user u ON (u.usesysid=d.datdba) " \
+            "WHERE sd.blks_read+sd.blks_hit<>0"
+        value = self.run_query(request, sql_stmt)[0][0]
+        return self.get_result(request, value,
+                    '{value}% hit ratio'.format(value=value), 'hit_ratio')
+
+
     def get_delta_value(self, statkey, request, sql_stmt):
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
 
@@ -208,3 +260,4 @@ class PostgresChecker(nagios.BatchStatusPlugin):
 if __name__ == "__main__":
     import sys
     PostgresChecker().run(sys.argv[1:])
+

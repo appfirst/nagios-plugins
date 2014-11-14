@@ -2,6 +2,7 @@
 
 """
 Created on Aug 8, 2013
+Updated Aug 27, 2014 by Tony Ling with code from http://www.bucardo.org/check_postgres/
 
 @author: Mike Okner
 
@@ -47,6 +48,25 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         sql_stmt = "SELECT count(*) FROM pg_stat_activity WHERE state LIKE \'idle%\';"
         value = self._single_value_stat(request, sql_stmt)
         return self.get_result(request, value, '%s idle conns' % value, 'idle')
+
+    @plugin.command("CONNECTIONS_UTILIZATION")
+    @statsd.gauge
+    def get_connections_utilized(self, request):
+        sql_stmt = "SELECT COUNT(datid) AS current, " \
+	"(SELECT setting AS mc FROM pg_settings WHERE name = 'max_connections') AS mc, " \
+	"  d.datname " \
+	"FROM pg_database d " \
+	"LEFT JOIN pg_stat_activity s ON (s.datid = d.oid) " \
+	"GROUP BY 2,3 " \
+	"ORDER BY datname"
+        values = self.run_query(request, sql_stmt)
+	connections = 0
+	max_connections = 0
+	for db in values:
+	    connections = connections + int(db[0])
+	    max_connections = max_connections + int(db[1])
+	value = float(connections/float(max_connections)) * 100
+        return self.get_result(request, value, '{value}% total connection utilization across all databases'.format(value=value), 'utilization')
 
     def _single_value_stat(self, request, query):
         rows = self.run_query(request, query)
@@ -156,6 +176,36 @@ class PostgresChecker(nagios.BatchStatusPlugin):
         value, sub_stats = self.get_delta_value(statkey, request, sql_stmt)
         return self.get_result(request, value,
                     '%s tuples deleted' % value, 'total', sub_perfs=sub_stats.iteritems())
+
+    @plugin.command("COMMIT_RATIO")
+    @statsd.counter
+    def get_commit_ratio(self, request):
+        sql_stmt = "SELECT " \
+            "round(100.*sd.xact_commit/(sd.xact_commit+sd.xact_rollback), 2) AS dcommitratio, " \
+            "d.datname, " \
+            "u.usename " \
+            "FROM pg_stat_database sd " \
+            "JOIN pg_database d ON (d.oid=sd.datid) " \
+            "JOIN pg_user u ON (u.usesysid=d.datdba) " \
+            "WHERE sd.xact_commit+sd.xact_rollback<>0"
+        value = self.run_query(request, sql_stmt)[0][0]
+        return self.get_result(request, value,
+                    '{value}% commit ratio'.format(value=value), 'commit_ratio')
+
+    @plugin.command("HIT_RATIO")
+    @statsd.counter
+    def get_hit_ratio(self, request):
+        sql_stmt = "SELECT " \
+            "round(100.*sd.blks_hit/(sd.blks_read+sd.blks_hit), 2) AS dhitratio, " \
+            "d.datname, " \
+            "u.usename " \
+            "FROM pg_stat_database sd " \
+            "JOIN pg_database d ON (d.oid=sd.datid) " \
+            "JOIN pg_user u ON (u.usesysid=d.datdba) " \
+            "WHERE sd.blks_read+sd.blks_hit<>0"
+        value = self.run_query(request, sql_stmt)[0][0]
+        return self.get_result(request, value,
+                    '{value}% hit ratio'.format(value=value), 'hit_ratio')
 
     def get_delta_value(self, statkey, request, sql_stmt):
         value, sub_stats = self._multi_value_stats(request, sql_stmt)
