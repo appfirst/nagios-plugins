@@ -51,7 +51,7 @@ def counter(method):
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
-            Statsd.update_stats(bucket, value, 1, result.status)
+            Statsd.update_stats(bucket, value, 1)
         return result
     if Statsd:
         return send_statsd
