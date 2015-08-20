@@ -335,6 +335,10 @@ _get_cpu(struct sstat *si)
             if ( strncmp("cpu", nam, 3) == EQ) {
                 i = atoi(&nam[3]);
 
+                if (i >= MAXCPU) {
+                    continue;
+                }
+
                 si->cpu.cpu[i].cpunr    = i;
                 si->cpu.cpu[i].utime    = cnts[0];
                 si->cpu.cpu[i].ntime    = cnts[1];
