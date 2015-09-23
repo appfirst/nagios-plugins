@@ -5,10 +5,9 @@ Created on Jun 14, 2012
 '''
 import os, sys
 _rootpath = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(_rootpath, "..", "statsd_clients", "python"))
-sys.path.append(os.path.join(_rootpath, "statsd", "AFStatsd", "afstatsd"))
+sys.path.append(os.path.join(_rootpath, "statsd"))
 try:
-    from afclient import Statsd, AFTransport
+    from afstatsd import Statsd, AFTransport
     Statsd.set_transport(AFTransport())
 except:
     print "Statsd Library is not available, check PYTHON_PATH"
@@ -37,7 +36,7 @@ def timer(method):
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
-            Statsd.timing(bucket, value, message=result.status)
+            Statsd.timing(bucket, value)
         return result
     if Statsd:
         return send_statsd
@@ -51,7 +50,7 @@ def counter(method):
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
-            Statsd.update_stats(bucket, value, 1)
+            Statsd.update_stats(bucket)
         return result
     if Statsd:
         return send_statsd
@@ -65,7 +64,7 @@ def gauge(method):
         # TODO: deal with more than one performance data
         if len(result.perf_data_list):
             value = result.perf_data_list[0]['value']
-            Statsd.gauge(bucket, value, message=result.status)
+            Statsd.gauge(bucket, value)
         return result
     if Statsd:
         return send_statsd

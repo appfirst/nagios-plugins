@@ -47,11 +47,14 @@ class RedisChecker(nagios.BatchStatusPlugin):
         return commands.getoutput(cmd)
 
     def _parse_output(self, request, output):
-        for l in output.split('\r\n'):
-            k, v = l.split(':')
-            value = nagios.to_num(v)
-            if value is not None:
-                yield k, value
+        for l in output.split('\n'):
+            try:
+                k, v = l.split(':')
+                value = nagios.to_num(v)
+                if value is not None:
+                    yield k, value
+            except ValueError:
+                pass
 
     def _validate_output(self, request, output):
         if "command not found" in output:
