@@ -88,6 +88,21 @@ class TestBasePlugin(unittest.TestCase):
         self.assertEqual(nagios.Status.OK, ba.verdict(2, 5, None))
         self.assertEqual(nagios.Status.OK, ba.verdict(2, None, None))
 
+        self.assertEqual(nagios.Status.OK, ba.verdict(2, 6, 8))
+        self.assertEqual(nagios.Status.WARNING, ba.verdict(7, 6, 8))
+        self.assertEqual(nagios.Status.CRITICAL, ba.verdict(9, 6, 8))
+
+        self.assertEqual(nagios.Status.WARNING, ba.verdict(8, 6, 8, False,  True))
+        self.assertEqual(nagios.Status.CRITICAL, ba.verdict(8, 6, 8, False,  False))
+
+        self.assertEqual(nagios.Status.CRITICAL, ba.verdict(3, 8, 6, True, False))
+        self.assertEqual(nagios.Status.WARNING, ba.verdict(7, 8, 6, True, False))
+        self.assertEqual(nagios.Status.OK, ba.verdict(9, 8, 6, True, False))
+
+        self.assertEqual(nagios.Status.CRITICAL, ba.verdict(6, 8, 6, True, False))
+        self.assertEqual(nagios.Status.WARNING, ba.verdict(6, 8, 6, True, True))
+
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.test_']
     unittest.main()
